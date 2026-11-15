@@ -2,8 +2,9 @@
 
 Aplicación web para **apoyar metas de recaudación pagando con CoDi** (QR desde la app del banco) y un **panel de administración** para crear y gestionar esas metas. Consume la API Spring Boot que vive en la raíz de este mismo repositorio.
 
-- **Público (móvil, 390×844):** lista de metas, detalle con progreso, aportar, pago con QR (pendiente / pagado / expirado).
-- **Admin (escritorio, 1440×900):** login, panel con tabla, vista de progreso, crear/editar, cerrar/reabrir.
+- **Público (móvil 390×844 y escritorio):** landing, lista de metas, detalle con progreso (y tarjeta de "¡Meta lograda!"), aportar, pago con QR (pendiente / pagado / expirado), "¿Cómo funciona?" y "Preguntas frecuentes".
+- **Admin (escritorio 1440×900 y móvil):** crear cuenta y login (con "Recordarme"), panel con KPIs, progreso con pagadas/pendientes/expiradas y referencia, crear/editar (con organizador y ciudad), cerrar/reabrir, aportaciones con filtros y CSV, y configuración. Cada cuenta ve solo sus metas.
+- **Colores:** verde de la marca para las acciones y **Static Amethyst** (paleta de Colorbears) como acento; las metas logradas usan el morado.
 
 Stack: **Vite + React 19 + TypeScript + React Router 7 + Tailwind CSS v4**. QR con **qrcode.react**. Fuente **Plus Jakarta Sans** (@fontsource, empaquetada, no depende de Google Fonts).
 

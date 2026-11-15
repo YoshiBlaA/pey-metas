@@ -1,6 +1,16 @@
-# pey_backend
+# Pey Metas
 
-Backend de una web app de donaciones hacia **metas de dinero** con barra de progreso. Cada aportación se cobra con un **QR de CoDi** creado con la API de [Pey](https://docs.pey.mx). Cuando la persona paga, Pey avisa por webhook y el backend suma el monto a la meta. El front-end no forma parte de este repositorio: consulta el progreso por polling.
+Web app de donaciones hacia **metas de dinero** con barra de progreso. Cada aportación se cobra con un **QR de CoDi** creado con la API de [Pey](https://docs.pey.mx). Cuando la persona paga, Pey avisa por webhook y el backend suma el monto a la meta.
+
+- **Cuentas por organizador:** cualquiera crea su cuenta (`/admin/registro`) y cada cuenta ve y maneja **solo sus metas y sus aportaciones**. El sitio público muestra las metas de todas las cuentas.
+- **Este repositorio** trae el backend (Spring Boot, en la raíz) y el front-end (React + Vite, en [`frontend/`](frontend/README.md)).
+- **En producción:** https://pey.jairocortes.cloud
+
+## Funciones
+
+- **Público:** landing, lista y detalle de metas con progreso, "Organiza: X · Ciudad", aportar (monto sugerido o libre, nombre o anónimo, mensaje) y pantalla de pago con el QR de CoDi (pendiente, pagado o expirado), más "¿Cómo funciona?" y "Preguntas frecuentes".
+- **Admin:** registro y login (con "Recordarme"), panel con KPIs (recaudado total y de la semana, pagadas y pendientes), crear, editar, cerrar y reabrir metas, progreso con conteos de pagadas, pendientes y expiradas y la referencia de cada cobro, lista de todas las aportaciones con filtros y exportación a CSV, y configuración de la cuenta.
+- **Pagos:** el webhook de Pey registra el pago en segundos. Si un aviso no llega, una tarea consulta a Pey cada minuto y lo registra igual, sin contarlo dos veces.
 
 ## Stack
 
@@ -49,9 +59,11 @@ Paquetes (`com.pey.meta`): `config` (CORS, OpenAPI, seguridad), `common` (errore
 | `PEY_WEBHOOK_SECRET` | `pey.webhook-secret` | (vacío) | **sí, para recibir pagos** | Secreto `whsec_...` del webhook (portal de Pey). Vacío o mal formado = el webhook responde 401 a todo |
 | `PEY_WEBHOOK_ALLOW_UNSIGNED` | `pey.webhook-allow-unsigned` | `false` | no | **Solo desarrollo**: `true` acepta webhooks sin firma, únicamente si `PEY_WEBHOOK_SECRET` está vacío |
 | `PEY_WEBHOOK_TOLERANCE_SECONDS` | `pey.webhook-tolerance-seconds` | `300` | no | Diferencia máxima entre `webhook-timestamp` y la hora del servidor |
+| `PEY_RECONCILE_ENABLED` | `pey.reconcile.enabled` | `true` | no | Conciliación con Pey: consulta cada minuto los QR sin pagar de las últimas 24 h y registra los que Pey ya tiene pagados (respaldo del webhook) |
+| `PEY_RECONCILE_DELAY_MS` | `pey.reconcile.delay-ms` | `60000` | no | Cada cuánto corre la conciliación |
 | `PORT` | `server.port` | `8080` | no | Puerto HTTP |
 
-El admin inicial se crea al arrancar **solo si no existe**; cambiar `ADMIN_PASSWORD` después no modifica un admin ya creado.
+El admin inicial se crea al arrancar **solo si no existe**; cambiar `ADMIN_PASSWORD` después no modifica un admin ya creado. Al arrancar, las metas que no tienen dueño (creadas antes de que hubiera cuentas) pasan a este admin.
 
 Para crear el `.env`, generar `JWT_SECRET` y cargar las variables, sigue [Correr en local y recibir webhooks de Pey](#correr-en-local-y-recibir-webhooks-de-pey).
 
@@ -152,14 +164,17 @@ Para probar endpoints de admin en Swagger: haz login, copia el `token` y pégalo
 
 | Método | Ruta | Acceso | Qué hace |
 |---|---|---|---|
-| POST | `/api/auth/login` | público | Login de admin; regresa `{token, tokenType, expiresIn}` |
-| GET | `/api/admin/me` | admin (JWT) | Admin del token |
-| POST | `/api/admin/goals` | admin (JWT) | Crear meta (nace OPEN con `raisedAmount` 0) |
-| GET | `/api/admin/goals?status=OPEN\|CLOSED` | admin (JWT) | Listar metas (filtro opcional) |
-| GET | `/api/admin/goals/{id}` | admin (JWT) | Ver una meta |
-| PUT | `/api/admin/goals/{id}` | admin (JWT) | Editar meta (reemplaza todos los campos) |
+| POST | `/api/auth/login` | público | Login de admin (usuario o correo); regresa `{token, tokenType, expiresIn}` |
+| POST | `/api/auth/register` | público | Crear cuenta `{name, email, password}` (mín. 8 caracteres); regresa el token igual que el login. 409 si el correo ya existe |
+| GET | `/api/admin/me` | admin (JWT) | Cuenta del token: `{id, username, name, roles}` |
+| POST | `/api/admin/goals` | admin (JWT) | Crear meta a nombre de la cuenta (nace OPEN con `raisedAmount` 0) |
+| GET | `/api/admin/goals?status=OPEN\|CLOSED` | admin (JWT) | Listar **mis** metas (filtro opcional) |
+| GET | `/api/admin/goals/{id}` | admin (JWT) | Ver una meta mía (404 si es de otra cuenta) |
+| PUT | `/api/admin/goals/{id}` | admin (JWT) | Editar meta (reemplaza todos los campos, incluidos `organizer` y `city` opcionales) |
 | POST | `/api/admin/goals/{id}/close` | admin (JWT) | Cerrar meta |
 | POST | `/api/admin/goals/{id}/reopen` | admin (JWT) | Reabrir meta (solo si no se ha alcanzado) |
+| GET | `/api/admin/contributions?goalId=&status=&limit=` | admin (JWT) | Aportaciones de mis metas en cualquier estado, con `numRef`; un PENDING vencido sale EXPIRED |
+| GET | `/api/admin/contributions/stats?goalId=` | admin (JWT) | Conteos de pagadas, pendientes y expiradas, y lo pagado en 7 días |
 | GET | `/api/public/goals?status=OPEN\|CLOSED` | público | Listar metas con progreso |
 | GET | `/api/public/goals/{id}` | público | Detalle con progreso, montos predeterminados y últimas aportaciones (para polling) |
 | POST | `/api/public/goals/{goalId}/contributions` | público | Crear aportación y QR de CoDi en Pey |
@@ -269,8 +284,22 @@ Solo en desarrollo, si quieres mandar avisos sin firmar, deja `PEY_WEBHOOK_SECRE
 
 - La meta se cierra sola al llegar o pasar `targetAmount` y deja de aceptar aportaciones.
 - Una tarea programada (cada `WEBHOOK_EXPIRATION_JOB_DELAY_MS`) marca `EXPIRED` las aportaciones `PENDING` vencidas. Si después llega el pago de una expirada, se marca `PAID` igual (el dinero ya se cobró).
+- **Conciliación:** si el webhook no llega (URL mal configurada en Pey, túnel caído), cada minuto se consultan en Pey (`GET /transaction/codi/qr/{id}`) los QR de las últimas 24 h sin pagar. Los que Pey ya tiene `PAID` se registran por el mismo servicio del webhook, que es idempotente.
+- **Cuentas:** cada meta guarda su dueño (`owner_id`). Las rutas `/api/admin/**` solo ven y modifican lo de la cuenta del token; lo de otra cuenta responde 404.
+
+## Despliegue (VPS con Nginx)
+
+Así corre en producción (https://pey.jairocortes.cloud):
+
+- **Backend:** `java -jar app.jar` como servicio `systemd`, con las variables en un `.env` (`EnvironmentFile=`), escuchando en `127.0.0.1:8081`.
+- **Front:** `npm run build` con `VITE_API_URL=https://pey.jairocortes.cloud` y `VITE_USE_MOCKS=false`; el contenido de `frontend/dist` se copia a `/var/www/pey`.
+- **Nginx:** un sitio para el dominio sirve `/var/www/pey` (con `try_files $uri /index.html` para las rutas de React) y manda `/api/` al backend con `proxy_pass http://127.0.0.1:8081`. El certificado se saca con `certbot --nginx -d tu-dominio --redirect`.
+- **Webhook de Pey:** Pey **exige https**. En el portal, la URL del webhook es `https://tu-dominio/api/webhooks/pey`, y el secreto `whsec_...` que muestra el portal va en `PEY_WEBHOOK_SECRET`. Si lo regeneras, actualízalo en el servidor y reinicia el servicio.
+- **Para comprobarlo**, paga $0.01. En "Ver Logs" del portal la entrega debe responder 200, y en el log del backend aparece `Aviso recibido, anotado: numRef ...`.
 
 ## Pendientes conocidos
 
 - En producción, `PEY_WEBHOOK_SECRET` debe ser el secreto real del portal de Pey y `PEY_WEBHOOK_ALLOW_UNSIGNED` debe quedar en `false`.
+- El registro de cuentas es abierto: no confirma el correo ni limita intentos, y no hay un superadmin que vea o desactive cuentas.
+- No hay recuperación ni cambio de contraseña desde la app.
 - Producción: desactivar Swagger si no se quiere público (`springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`) y considerar `ddl-auto: validate` con migraciones.
