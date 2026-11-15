@@ -86,6 +86,9 @@ Usa las **propiedades** en tu código (`@Value("${pey.api-key}")` o `@Configurat
 | `PEY_READ_TIMEOUT_MS` | `pey.read-timeout-ms` | `30000` | CobroBot (PeyClient) |
 | `WEBHOOK_EXPIRATION_JOB_DELAY_MS` | `webhook.expiration-job.delay-ms` | `60000` | WebhookBot (job de expiración) |
 | `WEBHOOK_EXPIRATION_JOB_INITIAL_DELAY_MS` | `webhook.expiration-job.initial-delay-ms` | `60000` | WebhookBot (job de expiración) |
+| `PEY_WEBHOOK_SECRET` | `pey.webhook-secret` | (vacío = 401 a todo) | WebhookBot (firma Standard Webhooks) |
+| `PEY_WEBHOOK_ALLOW_UNSIGNED` | `pey.webhook-allow-unsigned` | `false` | WebhookBot (solo desarrollo) |
+| `PEY_WEBHOOK_TOLERANCE_SECONDS` | `pey.webhook-tolerance-seconds` | `300` | WebhookBot (tolerancia de `webhook-timestamp`) |
 
 Notas: `JWT_SECRET` es obligatorio (mínimo 32 bytes) o la app no arranca; `QR_EXPIRATION_SECONDS` debe ser >= 360 (mínimo de Pey).
 
@@ -149,4 +152,4 @@ CimientoBot primero → GuardiaBot → MetaBot → CobroBot → WebhookBot (uno 
 - `main` integra `feature/auth`, `feature/goals`, `feature/contributions` y `feature/webhooks` (merges `--no-ff`, sin conflictos).
 - Peticiones de `docs/PETICIONES.md` atendidas (propiedades opcionales en `application.yml` y `.env.example`).
 - Endpoints reales: ver la tabla del README (incluye `GET /api/admin/me` y `POST /api/admin/goals/{id}/close|reopen`).
-- **Pendiente (decisión de Maruchan):** verificar la firma Standard Webhooks del webhook de Pey. El secreto `whsec_...` lo muestra el portal de Pey (Desarrollador → engrane de la API key) al crear el webhook; cada API key tiene un solo webhook. Hoy `NoOpWebhookSignatureVerifier` acepta todo y el webhook suma el `amount` que recibe, así que sin firma cualquiera podría simular pagos. Implementarlo en `webhook.security` reemplazando el bean y leyendo `PEY_WEBHOOK_SECRET` (aún no existe en `application.yml`).
+- **Firma del webhook (hecha, aprobada por Maruchan):** `webhook.security.StandardWebhooksSignatureVerifier` (WebhookBot) reemplazó al NoOp. Verifica `webhook-signature: v1,<base64(HMAC-SHA256(clave, "webhook-id.webhook-timestamp.cuerpo crudo"))>` con la clave en base64 que sigue a `whsec_`, compara en tiempo constante y rechaza timestamps fuera de `pey.webhook-tolerance-seconds` (300 s). Si falta el secreto, la firma no coincide o el secreto está mal formado responde 401 y no registra nada. `pey.webhook-allow-unsigned=true` solo aplica con secreto vacío y es solo para desarrollo. El secreto `whsec_...` lo muestra el portal de Pey (Desarrollador → engrane de la API key) al crear el webhook; cada API key tiene un solo webhook.

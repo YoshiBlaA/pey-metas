@@ -32,6 +32,12 @@ pey:
   # Timeouts del PeyClient en milisegundos
   connect-timeout-ms: ${PEY_CONNECT_TIMEOUT_MS:5000}
   read-timeout-ms: ${PEY_READ_TIMEOUT_MS:30000}
+  # Secreto del webhook (whsec_...) que da el portal de Pey al crear el webhook. Vacio = se rechazan todos (401)
+  webhook-secret: ${PEY_WEBHOOK_SECRET:}
+  # SOLO desarrollo: si es true y el secreto esta vacio, se aceptan webhooks sin firma. Default false
+  webhook-allow-unsigned: ${PEY_WEBHOOK_ALLOW_UNSIGNED:false}
+  # Diferencia maxima permitida con webhook-timestamp, en segundos (Standard Webhooks recomienda 5 minutos)
+  webhook-tolerance-seconds: ${PEY_WEBHOOK_TOLERANCE_SECONDS:300}
 
 # Tarea programada que marca EXPIRED las aportaciones PENDING vencidas
 webhook:

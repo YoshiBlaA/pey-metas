@@ -50,7 +50,7 @@ No edites archivos ajenos: escribe la petición aquí, haz commit en tu rama y a
 - Estado: HECHO parcial (CimientoBot, integracion final):
   - HECHO: `webhook.expiration-job.delay-ms` e `initial-delay-ms` en `application.yml` y `WEBHOOK_EXPIRATION_JOB_DELAY_MS` / `WEBHOOK_EXPIRATION_JOB_INITIAL_DELAY_MS` en `.env.example` (60000 ms, igual que el job).
   - HECHO: `SecurityConfig` deja publico `/api/webhooks/**` y CSRF esta desactivado (API stateless con JWT).
-  - PENDIENTE (decision de Maruchan): verificacion de firma. Confirmado en docs.pey.mx: el secreto (`whsec_...`) lo muestra el portal de Pey al crear el webhook de la API key. `PEY_WEBHOOK_SECRET` solo quedo comentada en `.env.example`; no hay propiedad en `application.yml` hasta que exista codigo que la lea.
+  - Verificacion de firma: aprobada por Maruchan e implementada por WebhookBot (ver la peticion "firma del webhook", HECHA). Nota original: Confirmado en docs.pey.mx: el secreto (`whsec_...`) lo muestra el portal de Pey al crear el webhook de la API key. `PEY_WEBHOOK_SECRET` solo quedo comentada en `.env.example`; no hay propiedad en `application.yml` hasta que exista codigo que la lea.
 
 ### [2026-11-15] WebhookBot (rama feature/webhooks) - notas para integrar
 - Merge: en `feature/webhooks` hice `git merge feature/contributions` (fast-forward; ya trae `feature/goals`) para compilar contra `Contribution`, `ContributionRepository` y `GoalService` reales. No mergee `feature/auth`.
@@ -106,4 +106,4 @@ No edites archivos ajenos: escribe la petición aquí, haz commit en tu rama y a
   > ```
   > Respuesta esperada: `200 {"received":true,"result":"PROCESSED"}`; si repites el mismo cuerpo con nueva firma sale `DUPLICATE`.
 - Motivo: verificacion de firma Standard Webhooks del webhook de Pey (aprobada por Maruchan).
-- Estado: PENDIENTE
+- Estado: HECHO (CimientoBot, integracion de e1f4472): `pey.webhook-secret`, `pey.webhook-allow-unsigned` y `pey.webhook-tolerance-seconds` agregadas a `application.yml` (nombres y defaults confirmados contra los `@Value` de `StandardWebhooksSignatureVerifier`); `PEY_WEBHOOK_SECRET` descomentada y explicada en `.env.example` junto con `PEY_WEBHOOK_ALLOW_UNSIGNED=false` y `PEY_WEBHOOK_TOLERANCE_SECONDS=300`; curl firmado (PowerShell y bash) integrado al README en la prueba con $0.01.

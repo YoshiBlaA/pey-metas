@@ -46,6 +46,9 @@ Paquetes (`com.pey.meta`): `config` (CORS, OpenAPI, seguridad), `common` (errore
 | `CORS_ORIGINS` | `app.cors.origins` | `http://localhost:3000,http://localhost:5173` | no | Orígenes del front, separados por comas |
 | `WEBHOOK_EXPIRATION_JOB_DELAY_MS` | `webhook.expiration-job.delay-ms` | `60000` | no | Cada cuánto se marcan expiradas las aportaciones vencidas |
 | `WEBHOOK_EXPIRATION_JOB_INITIAL_DELAY_MS` | `webhook.expiration-job.initial-delay-ms` | `60000` | no | Espera antes de la primera corrida |
+| `PEY_WEBHOOK_SECRET` | `pey.webhook-secret` | (vacío) | **sí, para recibir pagos** | Secreto `whsec_...` del webhook (portal de Pey). Vacío o mal formado = el webhook responde 401 a todo |
+| `PEY_WEBHOOK_ALLOW_UNSIGNED` | `pey.webhook-allow-unsigned` | `false` | no | **Solo desarrollo**: `true` acepta webhooks sin firma, únicamente si `PEY_WEBHOOK_SECRET` está vacío |
+| `PEY_WEBHOOK_TOLERANCE_SECONDS` | `pey.webhook-tolerance-seconds` | `300` | no | Diferencia máxima entre `webhook-timestamp` y la hora del servidor |
 | `PORT` | `server.port` | `8080` | no | Puerto HTTP |
 
 El admin inicial se crea al arrancar **solo si no existe**; cambiar `ADMIN_PASSWORD` después no modifica un admin ya creado.
@@ -115,7 +118,7 @@ Para probar endpoints de admin en Swagger: haz login, copia el `token` y pégalo
 | GET | `/api/public/goals/{id}` | público | Detalle con progreso, montos predeterminados y últimas aportaciones (para polling) |
 | POST | `/api/public/goals/{goalId}/contributions` | público | Crear aportación y QR de CoDi en Pey |
 | GET | `/api/public/contributions/{numRef}` | público | Estado de una aportación (PENDING, PAID, EXPIRED) para polling |
-| POST | `/api/webhooks/pey` | público (lo llama Pey) | Webhook de pago `codi.qr.payment_received` (idempotente) |
+| POST | `/api/webhooks/pey` | público, con firma Standard Webhooks (lo llama Pey) | Webhook de pago `codi.qr.payment_received` (idempotente; 401 si la firma falta o no coincide) |
 
 Errores: todas las respuestas de error usan el mismo formato `{timestamp, status, error, message, path, errors[]}` (404 no encontrado, 400 validación, 409/422 reglas de negocio, 502 si Pey falla, 401/403 sin token o sin permiso).
 
@@ -175,7 +178,7 @@ Registro en Pey (según https://docs.pey.mx/docs/tutorials/getting-started/set-u
 
 1. En el portal de Pey ve a la sección **Desarrollador** y haz clic en el engrane de tu API key.
 2. Agrega la URL `https://<tu-tunel>/api/webhooks/pey` y haz clic en **Crear Webhook**.
-3. Guarda el **secreto del webhook** que te muestra (sirve para verificar la firma; ver Pendientes).
+3. Guarda el **secreto del webhook** (`whsec_...`) que te muestra, ponlo en `PEY_WEBHOOK_SECRET` y reinicia la app. **Sin ese secreto el endpoint responde 401 a todos los avisos de Pey y no se registra ningún pago.** Si rotas el secreto en el portal, actualiza la variable.
 
 Notas de Pey: el webhook está ligado a la API key y **cada API key solo puede tener un webhook** (si cambia la URL del túnel, hay que actualizarla). En el mismo engrane, el botón **Webhook Logs** muestra cada intento de entrega, el payload y la respuesta de tu servidor.
 
@@ -188,28 +191,47 @@ Invoke-RestMethod "http://localhost:8080/api/public/contributions/$($c.numRef)"
 Invoke-RestMethod "http://localhost:8080/api/public/goals/$($goal.id)"
 ```
 
-### 4-bis. Simular el webhook sin pagar (solo local)
+### 4-bis. Simular el webhook con un curl firmado (sin pagar)
 
-El cuerpo es el del evento `codi.qr.payment_received` documentado en https://docs.pey.mx/docs/webhooks/codi/qr. Usa el `numRef` y `codiQrId` que te regresó el paso 2; `datePaid` es Unix en segundos y `transactionId` es el identificador de la transacción en Pey. Si mandas otro aviso para un `numRef` que ya está `PAID`, el backend responde `DUPLICATE` y no suma de nuevo. Ojo: se suma el `amount` que manda el aviso (es el que reporta Pey), aunque sea distinto al de la aportación.
+El endpoint `POST /api/webhooks/pey` verifica la firma [Standard Webhooks](https://www.standardwebhooks.com) que usa Pey: `webhook-signature: v1,<base64(HMAC-SHA256(clave, "{webhook-id}.{webhook-timestamp}.{cuerpo}"))>`, donde la clave son los bytes en base64 que siguen a `whsec_`. Si la firma falta, no coincide, el secreto está vacío o mal formado, o el timestamp tiene más de `PEY_WEBHOOK_TOLERANCE_SECONDS` (5 minutos) de diferencia, responde **401** (`INVALID_SIGNATURE`) y no registra nada.
+
+Para probar en local:
+
+1. Pon en `.env` un secreto propio y reinicia la app (o usa el de Pey si ya lo tienes):
+   ```powershell
+   'whsec_' + [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])
+   ```
+2. Crea antes una aportación (paso 2) para tener un `numRef` real, y cambia en el cuerpo `numRef`, `codiQrId` y `amount` (por ejemplo `0.01`) por los de tu aportación.
+3. Firma el cuerpo **exactamente** como lo mandas (sin acentos, para evitar problemas de codificación). El cuerpo sigue el evento `codi.qr.payment_received` de https://docs.pey.mx/docs/webhooks/codi/qr; `datePaid` es Unix en segundos.
+
+PowerShell:
 
 ```powershell
-$body = @{
-  amount = 0.01; apiKeyId = 'prueba-local'; codiQrId = $c.codiQrId; concept = 'Prueba'
-  datePaid = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds(); numRef = $c.numRef
-  transactionId = 'SIMULADO-' + [guid]::NewGuid(); type = 'codi.qr.payment_received'
-} | ConvertTo-Json
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/webhooks/pey -ContentType 'application/json' -Body $body
-# {"received":true,"result":"PROCESSED"}  (otros valores: DUPLICATE, UNKNOWN_NUM_REF, IGNORED_EVENT)
+$secret = $env:PEY_WEBHOOK_SECRET   # whsec_...
+$id = "msg_prueba_$(Get-Random)"
+$ts = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+$body = '{"amount":150,"codiQrId":"QR-PRUEBA","concept":"Prueba","datePaid":' + $ts + ',"numRef":"1234567","transactionId":"TX-PRUEBA-1","type":"codi.qr.payment_received"}'
+$hmac = [Security.Cryptography.HMACSHA256]::new([Convert]::FromBase64String($secret.Substring(6)))
+$sig = [Convert]::ToBase64String($hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes("$id.$ts.$body")))
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/webhooks/pey -ContentType 'application/json' `
+  -Headers @{ 'webhook-id' = $id; 'webhook-timestamp' = "$ts"; 'webhook-signature' = "v1,$sig" } -Body $body
 ```
+
+bash (Git Bash, Linux o macOS, con openssl):
 
 ```bash
-curl -X POST http://localhost:8080/api/webhooks/pey -H 'Content-Type: application/json' -d '{
-  "amount": 0.01, "apiKeyId": "prueba-local", "codiQrId": "<codiQrId>", "concept": "Prueba",
-  "datePaid": 1790724818, "numRef": "<numRef>", "transactionId": "SIMULADO-1", "type": "codi.qr.payment_received"
-}'
+SECRET="$PEY_WEBHOOK_SECRET"   # whsec_...
+ID="msg_prueba_$RANDOM"; TS=$(date +%s)
+BODY='{"amount":150,"codiQrId":"QR-PRUEBA","concept":"Prueba","datePaid":'"$TS"',"numRef":"1234567","transactionId":"TX-PRUEBA-1","type":"codi.qr.payment_received"}'
+KEY_HEX=$(printf '%s' "${SECRET#whsec_}" | base64 -d | od -An -tx1 | tr -d ' \n')
+SIG=$(printf '%s' "$ID.$TS.$BODY" | openssl dgst -sha256 -mac HMAC -macopt hexkey:$KEY_HEX -binary | base64)
+curl -i -X POST http://localhost:8080/api/webhooks/pey -H 'Content-Type: application/json' \
+  -H "webhook-id: $ID" -H "webhook-timestamp: $TS" -H "webhook-signature: v1,$SIG" -d "$BODY"
 ```
 
-Esto funciona **solo porque la verificación de firma todavía no está activa** (ver Pendientes). Cuando se active, un POST sin headers `webhook-id`, `webhook-timestamp` y `webhook-signature` válidos responderá 401.
+Respuesta esperada: `200 {"received":true,"result":"PROCESSED"}`. Otros resultados: `DUPLICATE` (ese `numRef` ya estaba `PAID`; si repites el mismo cuerpo con nueva firma no se suma de nuevo), `UNKNOWN_NUM_REF`, `IGNORED_EVENT`. Sin firma válida: `401 {"received":false,"result":"INVALID_SIGNATURE"}` (en PowerShell, `Invoke-RestMethod` lo muestra como excepción). Ojo: se suma el `amount` del aviso (el que reporta Pey), aunque sea distinto al de la aportación.
+
+Solo en desarrollo, si quieres mandar avisos sin firmar, deja `PEY_WEBHOOK_SECRET` vacío y pon `PEY_WEBHOOK_ALLOW_UNSIGNED=true`. **Nunca en producción.**
 
 ### Otros comportamientos
 
@@ -218,5 +240,5 @@ Esto funciona **solo porque la verificación de firma todavía no está activa**
 
 ## Pendientes conocidos
 
-- **Firma del webhook**: Pey firma con [Standard Webhooks](https://www.standardwebhooks.com) (headers `webhook-id`, `webhook-timestamp`, `webhook-signature`) usando el secreto que da el portal. Hoy `NoOpWebhookSignatureVerifier` acepta todo. Como el `numRef` se le regresa al público y el backend suma el `amount` del aviso, cualquiera podría crear una aportación, no pagarla y mandar un aviso falso con cualquier monto (incluso cerrar la meta). **Hay que implementarla antes de publicar la app** (variable sugerida `PEY_WEBHOOK_SECRET`).
+- En producción, `PEY_WEBHOOK_SECRET` debe ser el secreto real del portal de Pey y `PEY_WEBHOOK_ALLOW_UNSIGNED` debe quedar en `false`.
 - Producción: desactivar Swagger si no se quiere público (`springdoc.api-docs.enabled=false`, `springdoc.swagger-ui.enabled=false`) y considerar `ddl-auto: validate` con migraciones.
