@@ -171,7 +171,8 @@ export function LoginPage({ mode = 'login' }: { mode?: 'login' | 'register' }) {
     return (
       <div className="min-h-dvh pb-8">
         <MockBanner />
-        <div className="flex h-[330px] flex-col gap-3.5 px-6 pt-5 text-white" style={{ background: gradient }}>
+        <div className="relative isolate flex h-[330px] flex-col gap-3.5 overflow-hidden px-6 pt-5 text-white" style={{ background: gradient }}>
+          <span className="lp-blob" style={{ background: '#7266CC', width: 240, height: 240, top: -60, right: -110, opacity: 0.55, zIndex: -1 }} aria-hidden />
           {brand}
           <h2 className="text-[26px] font-extrabold leading-[33px]">Administra tus metas y recibe aportaciones con CoDi.</h2>
           <p className="text-[14px] leading-[21px] text-[#D7F5E8]">Crea metas, define montos sugeridos y sigue cada pago en tiempo real.</p>
@@ -194,13 +195,15 @@ export function LoginPage({ mode = 'login' }: { mode?: 'login' | 'register' }) {
     <div className="flex min-h-dvh flex-col">
       <MockBanner />
       <div className="flex flex-1">
-        <div className="flex w-[620px] shrink-0 flex-col justify-between p-14 text-white" style={{ background: gradient }}>
-          {brand}
-          <div className="flex flex-col gap-4">
+        <div className="relative flex w-[620px] shrink-0 flex-col justify-between overflow-hidden p-14 text-white" style={{ background: gradient }}>
+          <span className="lp-blob" style={{ background: '#7266CC', width: 360, height: 360, bottom: -120, right: -120, opacity: 0.55 }} aria-hidden />
+          <span className="lp-blob" style={{ background: '#B6A3EB', width: 200, height: 200, top: 120, left: -80, opacity: 0.3, animationDelay: '-8s' }} aria-hidden />
+          <span className="relative">{brand}</span>
+          <div className="relative flex flex-col gap-4">
             <h2 className="text-[40px] font-extrabold leading-[48px]">Administra tus metas y recibe aportaciones con CoDi.</h2>
             <p className="text-[16px] leading-6 text-[#D7F5E8]">Crea metas, define montos sugeridos y sigue cada pago en tiempo real.</p>
           </div>
-          <div className="flex gap-4">
+          <div className="relative flex gap-4">
             <LoginStat value={raised !== undefined ? formatMoney(raised) : '—'} label="recaudados en total" />
             <LoginStat value={achieved !== undefined ? String(achieved) : '—'} label="metas logradas" />
           </div>

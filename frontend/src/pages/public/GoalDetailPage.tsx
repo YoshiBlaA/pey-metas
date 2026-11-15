@@ -54,16 +54,19 @@ function Banner({ goal, height, icon, radius = 16 }: { goal: GoalPublicDetail; h
   const achieved = goal.status === 'CLOSED'
   return (
     <div
-      className="flex flex-col justify-between rounded-[20px] p-4"
+      className="relative flex flex-col justify-between overflow-hidden rounded-[20px] p-4"
       style={{
         height,
         background: achieved
-          ? 'linear-gradient(120deg,#5145CD 0%,#7C72E0 70%,#A39CF0 100%)'
+          ? 'linear-gradient(120deg,#1715A3 0%,#3D36B4 45%,#7266CC 100%)'
           : 'linear-gradient(120deg,#0E9F6E 0%,#3CC48E 70%,#6FD9AC 100%)',
       }}
     >
-      <span className="w-max rounded-full bg-white/85"><StatusBadge status={goal.status} /></span>
-      <span className={`ui-tile bg-white ${achieved ? 'text-achieved' : 'text-brand-600'}`} style={{ width: icon, height: icon, borderRadius: radius }}>
+      {/* Círculos decorativos suaves (morado en metas abiertas, verde en logradas). */}
+      <span className="absolute -right-10 -top-14 size-44 rounded-full opacity-40" style={{ background: achieved ? '#B6A3EB' : '#7266CC' }} aria-hidden />
+      <span className="absolute -bottom-16 right-20 size-32 rounded-full bg-white/15" aria-hidden />
+      <span className="relative w-max rounded-full bg-white/85"><StatusBadge status={goal.status} /></span>
+      <span className={`ui-tile relative bg-white ${achieved ? 'text-achieved' : 'text-brand-600'}`} style={{ width: icon, height: icon, borderRadius: radius }}>
         {achieved ? <TrophyIcon className="size-6" /> : <HeartIcon className="size-6" />}
       </span>
     </div>

@@ -48,9 +48,9 @@ export function HowItWorksPage() {
       <ol className="grid gap-3.5 md:grid-cols-2 md:gap-5">
         {STEPS.map((s, i) => (
           <li key={s.title} className="ui-card !flex-row items-start" style={{ gap: 14 }}>
-            <span className="ui-tile size-11 shrink-0 bg-brand-50 text-brand-700"><s.icon className="size-5" /></span>
+            <span className={`ui-tile size-11 shrink-0 ${i % 2 ? 'bg-accent-50 text-accent-700' : 'bg-brand-50 text-brand-700'}`}><s.icon className="size-5" /></span>
             <div className="flex flex-col gap-1">
-              <span className="t-cap !font-semibold !text-brand-700">Paso {i + 1}</span>
+              <span className={`t-cap !font-semibold ${i % 2 ? '!text-accent-700' : '!text-brand-700'}`}>Paso {i + 1}</span>
               <h2 className="t-h3">{s.title}</h2>
               <p className="t-body">{s.text}</p>
             </div>
@@ -90,7 +90,7 @@ export function FaqPage() {
               aria-expanded={open === i}
             >
               <span className="t-strong">{item.q}</span>
-              <span className={`text-[20px] font-semibold text-brand-700 transition ${open === i ? 'rotate-45' : ''}`} aria-hidden>+</span>
+              <span className={`text-[20px] font-semibold text-accent-700 transition ${open === i ? 'rotate-45' : ''}`} aria-hidden>+</span>
             </button>
             {open === i && <p className="t-body pb-4">{item.a}</p>}
           </div>

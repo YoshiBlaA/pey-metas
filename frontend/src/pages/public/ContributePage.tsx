@@ -241,9 +241,10 @@ function Summary({ goal }: { goal: GoalPublicDetail }) {
   const remaining = Math.max(0, goal.targetAmount - goal.raisedAmount)
   return (
     <aside className="ui-card w-[400px] shrink-0" style={{ padding: 24, gap: 16 }}>
-      <div className="flex h-[110px] flex-col justify-between rounded-[20px] p-4" style={{ background: 'linear-gradient(120deg,#0E9F6E 0%,#3CC48E 70%,#6FD9AC 100%)' }}>
-        <span className="w-max rounded-full bg-white/85"><StatusBadge status={goal.status} /></span>
-        <span className="ui-tile size-11 bg-white text-brand-600"><HeartIcon /></span>
+      <div className="relative flex h-[110px] flex-col justify-between overflow-hidden rounded-[20px] p-4" style={{ background: 'linear-gradient(120deg,#0E9F6E 0%,#3CC48E 70%,#6FD9AC 100%)' }}>
+        <span className="absolute -right-10 -top-14 size-40 rounded-full opacity-40" style={{ background: '#7266CC' }} aria-hidden />
+        <span className="relative w-max rounded-full bg-white/85"><StatusBadge status={goal.status} /></span>
+        <span className="ui-tile relative size-11 bg-white text-brand-600"><HeartIcon /></span>
       </div>
       <div className="flex flex-col gap-1">
         <h2 className="t-h2">{goal.title}</h2>

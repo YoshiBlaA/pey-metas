@@ -39,7 +39,7 @@ export function GoalsListPage() {
             key={f.label}
             aria-pressed={active}
             onClick={() => setStatus(f.value)}
-            className={`rounded-full px-4 font-semibold transition ${desktop ? 'h-10 text-[14px]' : 'h-[34px] text-[13px]'} ${active ? 'bg-ink-900 text-white' : 'border border-line bg-card text-ink-900 hover:bg-brand-50'}`}
+            className={`rounded-full px-4 font-semibold transition ${desktop ? 'h-10 text-[14px]' : 'h-[34px] text-[13px]'} ${active ? 'bg-accent-900 text-white' : 'border border-line bg-card text-ink-900 hover:bg-accent-50'}`}
           >
             {f.label}
           </button>
@@ -62,7 +62,7 @@ export function GoalsListPage() {
       <div className="flex flex-col gap-7 pt-8">
         <div className="flex items-end justify-between gap-6">
           <div className="flex flex-col gap-2">
-            <h1 className="text-[40px] font-extrabold leading-[48px]">Apoya una meta</h1>
+            <h1 className="text-[40px] font-extrabold leading-[48px]">Apoya <span className="lp-grad-text">una meta</span></h1>
             <p className="t-bodyL">Aporta en segundos con CoDi desde la app de tu banco. Sin comisiones.</p>
           </div>
           {filters}
@@ -99,7 +99,7 @@ export function GoalsListPage() {
 
       <div className="ui-content" style={{ gap: 14, paddingTop: 4 }}>
         <section className="flex flex-col gap-1">
-          <h1 className="t-h1" style={{ fontSize: 28, lineHeight: '36px' }}>Apoya una meta</h1>
+          <h1 className="t-h1" style={{ fontSize: 28, lineHeight: '36px' }}>Apoya <span className="lp-grad-text">una meta</span></h1>
           <p className="t-body">Aporta en segundos con CoDi desde la app de tu banco. Sin comisiones.</p>
         </section>
 
