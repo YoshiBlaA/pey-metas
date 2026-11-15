@@ -22,7 +22,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pey.meta.webhook.dto.PeyWebhookRequest;
-import com.pey.meta.webhook.security.NoOpWebhookSignatureVerifier;
 import com.pey.meta.webhook.security.WebhookSignatureVerifier;
 import com.pey.meta.webhook.service.PeyWebhookService;
 import com.pey.meta.webhook.service.WebhookResult;
@@ -47,7 +46,7 @@ class PeyWebhookControllerTest {
     void respondeOkYPasaLosCamposAlServicio() throws Exception {
         when(webhookService.handle(any())).thenReturn(WebhookResult.PROCESSED);
 
-        mockMvc(new NoOpWebhookSignatureVerifier()).perform(post("/api/webhooks/pey")
+        mockMvc((body, headers) -> true).perform(post("/api/webhooks/pey")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("webhook-signature", "v1,abc")
                         .content(BODY))
@@ -67,7 +66,7 @@ class PeyWebhookControllerTest {
 
     @Test
     void jsonInvalidoResponde400() throws Exception {
-        mockMvc(new NoOpWebhookSignatureVerifier()).perform(post("/api/webhooks/pey")
+        mockMvc((body, headers) -> true).perform(post("/api/webhooks/pey")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{no es json"))
                 .andExpect(status().isBadRequest())

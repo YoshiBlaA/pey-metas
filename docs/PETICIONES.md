@@ -58,3 +58,52 @@ No edites archivos ajenos: escribe la petición aquí, haz commit en tu rama y a
 - Concurrencia: el webhook y el job bloquean la fila de la aportacion con `EntityManager.refresh(..., PESSIMISTIC_WRITE)` antes de cambiarla, asi un aviso repetido al mismo tiempo no se cuenta dos veces y el job no pisa un PAID. No hizo falta cambiar `ContributionRepository`.
 - Si `GoalService.registerPayment` o la BD fallan, se hace rollback y el endpoint responde 5xx para que Pey reintente.
 - Estado: INFORMATIVO
+
+### [2026-11-15] WebhookBot (rama feature/webhooks) - firma del webhook
+- Archivo / zona afectada: `src/main/resources/application.yml`, `.env.example` y `README.md` (CimientoBot).
+- Cambio pedido en `application.yml` (dentro de `pey:`):
+  ```yaml
+  pey:
+    # Secreto del webhook (whsec_...) que da el portal de Pey al crear el webhook. Vacio = se rechazan todos.
+    webhook-secret: ${PEY_WEBHOOK_SECRET:}
+    # SOLO desarrollo: si es true y el secreto esta vacio, se aceptan webhooks sin firma. Default false.
+    webhook-allow-unsigned: ${PEY_WEBHOOK_ALLOW_UNSIGNED:false}
+    # Diferencia maxima permitida con webhook-timestamp, en segundos (Standard Webhooks recomienda 5 minutos).
+    webhook-tolerance-seconds: ${PEY_WEBHOOK_TOLERANCE_SECONDS:300}
+  ```
+- Cambio pedido en `.env.example`: quitar el comentario "TODAVIA NO SE USA" y dejar:
+  ```
+  # Secreto del webhook (whsec_...) que muestra el portal de Pey al crear el webhook. Sin el, todo webhook responde 401.
+  PEY_WEBHOOK_SECRET=whsec_tu-secreto
+  # Solo desarrollo: true acepta webhooks sin firma cuando PEY_WEBHOOK_SECRET esta vacio. Nunca en produccion.
+  PEY_WEBHOOK_ALLOW_UNSIGNED=false
+  PEY_WEBHOOK_TOLERANCE_SECONDS=300
+  ```
+- Seccion sugerida para el README, "Probar el webhook con un curl firmado":
+  > El endpoint `POST /api/webhooks/pey` verifica la firma Standard Webhooks: `webhook-signature: v1,<base64(HMAC-SHA256(clave, "{webhook-id}.{webhook-timestamp}.{cuerpo}"))>`, donde la clave son los bytes en base64 que siguen a `whsec_`. Si la firma falta, no coincide o el timestamp tiene mas de 5 minutos de diferencia, responde 401 y no registra nada. Para probar en local pon en `.env` un secreto propio (por ejemplo `whsec_` + 32 bytes aleatorios en base64), crea antes una aportacion para tener un `numRef` real y firma el cuerpo exactamente como lo mandas (sin acentos para evitar problemas de codificacion).
+  >
+  > PowerShell:
+  > ```powershell
+  > $secret = $env:PEY_WEBHOOK_SECRET   # whsec_...
+  > $id = "msg_prueba_$(Get-Random)"
+  > $ts = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+  > $body = '{"amount":150,"codiQrId":"QR-PRUEBA","concept":"Prueba","datePaid":' + $ts + ',"numRef":"1234567","transactionId":"TX-PRUEBA-1","type":"codi.qr.payment_received"}'
+  > $hmac = [Security.Cryptography.HMACSHA256]::new([Convert]::FromBase64String($secret.Substring(6)))
+  > $sig = [Convert]::ToBase64String($hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes("$id.$ts.$body")))
+  > Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/webhooks/pey -ContentType 'application/json' `
+  >   -Headers @{ 'webhook-id' = $id; 'webhook-timestamp' = "$ts"; 'webhook-signature' = "v1,$sig" } -Body $body
+  > ```
+  >
+  > bash (Git Bash, Linux o macOS, con openssl):
+  > ```bash
+  > SECRET="$PEY_WEBHOOK_SECRET"   # whsec_...
+  > ID="msg_prueba_$RANDOM"; TS=$(date +%s)
+  > BODY='{"amount":150,"codiQrId":"QR-PRUEBA","concept":"Prueba","datePaid":'"$TS"',"numRef":"1234567","transactionId":"TX-PRUEBA-1","type":"codi.qr.payment_received"}'
+  > KEY_HEX=$(printf '%s' "${SECRET#whsec_}" | base64 -d | od -An -tx1 | tr -d ' \n')
+  > SIG=$(printf '%s' "$ID.$TS.$BODY" | openssl dgst -sha256 -mac HMAC -macopt hexkey:$KEY_HEX -binary | base64)
+  > curl -i -X POST http://localhost:8080/api/webhooks/pey -H 'Content-Type: application/json' \
+  >   -H "webhook-id: $ID" -H "webhook-timestamp: $TS" -H "webhook-signature: v1,$SIG" -d "$BODY"
+  > ```
+  > Respuesta esperada: `200 {"received":true,"result":"PROCESSED"}`; si repites el mismo cuerpo con nueva firma sale `DUPLICATE`.
+- Motivo: verificacion de firma Standard Webhooks del webhook de Pey (aprobada por Maruchan).
+- Estado: PENDIENTE
