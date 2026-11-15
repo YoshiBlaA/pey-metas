@@ -36,11 +36,14 @@ class ContributionAdminServiceTest {
     private Goal goalA;
     private Goal goalB;
     private int ref = 1;
+    private static final Long OWNER = 1L;
+    private static final Long OTHER = 2L;
 
     @BeforeEach
     void setUp() {
-        goalA = goalRepository.save(goal("Laptop"));
-        goalB = goalRepository.save(goal("Medicinas"));
+        goalA = goalRepository.save(goal("Laptop", OWNER));
+        goalB = goalRepository.save(goal("Medicinas", OWNER));
+        Goal ajena = goalRepository.save(goal("De otro admin", OTHER));
         Instant now = Instant.now();
         save(goalA, ContributionStatus.PAID, "100.00", now.plusSeconds(600), now.minus(Duration.ofDays(1)), "Mariana", false);
         save(goalA, ContributionStatus.PAID, "50.00", now.plusSeconds(600), now.minus(Duration.ofDays(10)), "Beto", true);
@@ -48,40 +51,49 @@ class ContributionAdminServiceTest {
         save(goalA, ContributionStatus.PENDING, "30.00", now.minusSeconds(5), null, null, false);
         save(goalA, ContributionStatus.EXPIRED, "40.00", now.minusSeconds(900), null, "Ana", false);
         save(goalB, ContributionStatus.PAID, "200.00", now.plusSeconds(600), now.minus(Duration.ofHours(2)), "Luis", false);
+        save(ajena, ContributionStatus.PAID, "999.00", now.plusSeconds(600), now.minus(Duration.ofHours(1)), "Otro", false);
     }
 
     @Test
     void statsCountsEffectiveStatusPerGoal() {
-        ContributionStatsResponse a = service.stats(goalA.getId());
+        ContributionStatsResponse a = service.stats(OWNER, goalA.getId());
         assertThat(a.paid()).isEqualTo(2);
         assertThat(a.pending()).isEqualTo(1);
         assertThat(a.expired()).isEqualTo(2);
         assertThat(a.paidAmountLast7Days()).isEqualByComparingTo("100.00");
 
-        ContributionStatsResponse all = service.stats(null);
+        ContributionStatsResponse all = service.stats(OWNER, null);
         assertThat(all.paid()).isEqualTo(3);
         assertThat(all.paidAmountLast7Days()).isEqualByComparingTo("300.00");
     }
 
     @Test
     void listFiltersByGoalAndEffectiveStatus() {
-        List<AdminContributionResponse> expired = service.list(goalA.getId(), ContributionStatus.EXPIRED, 50);
+        List<AdminContributionResponse> expired = service.list(OWNER, goalA.getId(), ContributionStatus.EXPIRED, 50);
         assertThat(expired).hasSize(2).allMatch(c -> c.status() == ContributionStatus.EXPIRED);
         assertThat(expired).extracting(AdminContributionResponse::name).containsExactlyInAnyOrder("Anónimo", "Ana");
 
-        List<AdminContributionResponse> pending = service.list(goalA.getId(), ContributionStatus.PENDING, 50);
+        List<AdminContributionResponse> pending = service.list(OWNER, goalA.getId(), ContributionStatus.PENDING, 50);
         assertThat(pending).extracting(AdminContributionResponse::name).containsExactly("Fer");
 
-        List<AdminContributionResponse> all = service.list(null, null, 50);
+        List<AdminContributionResponse> all = service.list(OWNER, null, null, 50);
         assertThat(all).hasSize(6);
         assertThat(all).filteredOn(c -> c.amount().compareTo(new BigDecimal("50.00")) == 0)
                 .extracting(AdminContributionResponse::name).containsExactly("Anónimo");
         assertThat(all).extracting(AdminContributionResponse::goalTitle).contains("Laptop", "Medicinas");
-        assertThat(service.list(null, null, 2)).hasSize(2);
+        assertThat(service.list(OWNER, null, null, 2)).hasSize(2);
     }
 
-    private static Goal goal(String title) {
+    @Test
+    void otherAdminSeesOnlyTheirOwn() {
+        assertThat(service.list(OTHER, null, null, 50)).extracting(AdminContributionResponse::name).containsExactly("Otro");
+        assertThat(service.list(OTHER, goalA.getId(), null, 50)).isEmpty();
+        assertThat(service.stats(OTHER, null).paid()).isEqualTo(1);
+    }
+
+    private static Goal goal(String title, Long owner) {
         Goal g = new Goal();
+        g.setOwnerId(owner);
         g.setTitle(title);
         g.setTargetAmount(new BigDecimal("1000.00"));
         return g;

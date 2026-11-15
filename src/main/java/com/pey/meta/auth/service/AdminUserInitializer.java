@@ -18,6 +18,7 @@ import com.pey.meta.auth.repository.AdminUserRepository;
  * si todavía no existe. Nunca cambia un admin existente ni escribe la contraseña en el log.
  */
 @Component
+@org.springframework.core.annotation.Order(1)
 public class AdminUserInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminUserInitializer.class);

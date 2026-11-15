@@ -40,26 +40,26 @@ public class ContributionAdminService {
         this.clock = clock;
     }
 
-    /** Mas nuevas primero; goalId y status opcionales; limit entre 1 y {@link #MAX_LIMIT}. */
+    /** Solo de metas del admin ownerId, mas nuevas primero; goalId y status opcionales; limit entre 1 y {@link #MAX_LIMIT}. */
     @Transactional(readOnly = true)
-    public List<AdminContributionResponse> list(Long goalId, ContributionStatus status, int limit) {
+    public List<AdminContributionResponse> list(Long ownerId, Long goalId, ContributionStatus status, int limit) {
         Instant now = clock.instant();
         int size = Math.max(1, Math.min(limit, MAX_LIMIT));
-        return contributionRepository.searchForAdmin(goalId, status == null,
+        return contributionRepository.searchForAdmin(ownerId, goalId, status == null,
                         status == ContributionStatus.PAID, status == ContributionStatus.PENDING,
                         status == ContributionStatus.EXPIRED, now, PageRequest.of(0, size)).stream()
                 .map(c -> ContributionMapper.toAdmin(c, ContributionService.effectiveStatus(c, now)))
                 .toList();
     }
 
-    /** Conteos por estado efectivo y lo pagado en los ultimos 7 dias; goalId opcional (null = todas). */
+    /** Conteos por estado efectivo y lo pagado en 7 dias de las metas del admin; goalId opcional (null = todas). */
     @Transactional(readOnly = true)
-    public ContributionStatsResponse stats(Long goalId) {
+    public ContributionStatsResponse stats(Long ownerId, Long goalId) {
         Instant now = clock.instant();
         return new ContributionStatsResponse(
-                contributionRepository.countPaid(goalId),
-                contributionRepository.countActivePending(goalId, now),
-                contributionRepository.countEffectiveExpired(goalId, now),
-                contributionRepository.sumPaidSince(goalId, now.minus(WEEK)));
+                contributionRepository.countPaid(ownerId, goalId),
+                contributionRepository.countActivePending(ownerId, goalId, now),
+                contributionRepository.countEffectiveExpired(ownerId, goalId, now),
+                contributionRepository.sumPaidSince(ownerId, goalId, now.minus(WEEK)));
     }
 }

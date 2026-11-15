@@ -7,6 +7,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import com.pey.meta.auth.service.CurrentAdmin;
 import com.pey.meta.common.ErrorResponse;
 import com.pey.meta.config.OpenApiConfig;
 import com.pey.meta.contribution.dto.AdminContributionResponse;
@@ -31,27 +35,31 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class ContributionAdminController {
 
     private final ContributionAdminService service;
+    private final CurrentAdmin currentAdmin;
 
-    public ContributionAdminController(ContributionAdminService service) {
+    public ContributionAdminController(ContributionAdminService service, CurrentAdmin currentAdmin) {
         this.service = service;
+        this.currentAdmin = currentAdmin;
     }
 
     @GetMapping
     @Operation(summary = "Listar aportaciones",
-            description = "Mas nuevas primero, con su estado efectivo (un PENDING vencido sale EXPIRED) y su numRef.")
+            description = "Solo de mis metas, mas nuevas primero, con su estado efectivo (un PENDING vencido sale EXPIRED) y su numRef.")
     public List<AdminContributionResponse> list(
+            @AuthenticationPrincipal UserDetails user,
             @Parameter(description = "Solo las de esta meta") @RequestParam(required = false) Long goalId,
             @Parameter(description = "PENDING, PAID o EXPIRED") @RequestParam(required = false) ContributionStatus status,
             @Parameter(description = "Maximo de resultados (1 a 1000)")
             @RequestParam(defaultValue = "" + ContributionAdminService.DEFAULT_LIMIT) int limit) {
-        return service.list(goalId, status, limit);
+        return service.list(currentAdmin.id(user), goalId, status, limit);
     }
 
     @GetMapping("/stats")
     @Operation(summary = "Conteos por estado",
             description = "Pagadas, pendientes vigentes, expiradas y lo pagado en los ultimos 7 dias. Sin goalId = todas.")
     public ContributionStatsResponse stats(
+            @AuthenticationPrincipal UserDetails user,
             @Parameter(description = "Solo las de esta meta") @RequestParam(required = false) Long goalId) {
-        return service.stats(goalId);
+        return service.stats(currentAdmin.id(user), goalId);
     }
 }
