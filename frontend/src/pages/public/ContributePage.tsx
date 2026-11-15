@@ -135,6 +135,7 @@ export function ContributePage() {
       placeholder="Ej. Mariana L."
       value={form.displayName}
       maxLength={LIMITS.displayName}
+      showCount={false}
       onChange={(e) => set('displayName', e.target.value)}
       error={errors.displayName}
       autoComplete="nickname"
@@ -147,6 +148,7 @@ export function ContributePage() {
       placeholder="Escribe unas palabras de ánimo"
       value={form.message}
       maxLength={LIMITS.message}
+      showCount={false}
       onChange={(e) => set('message', e.target.value)}
       error={errors.message}
       className={desktop ? '!h-[84px]' : ''}

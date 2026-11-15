@@ -27,7 +27,7 @@ export function ContributionRow({ c }: { c: RecentContribution }) {
           <p className="t-strong truncate">{c.name}</p>
           <Money amount={c.amount} className="t-strong shrink-0 text-brand-700" />
         </div>
-        {c.message && <p className="t-body break-words">{c.message}</p>}
+        {c.message && <p className="t-body break-words !text-ink-900">{c.message}</p>}
         <p className="t-cap !text-ink-400">
           <time dateTime={c.paidAt}>{formatRelative(c.paidAt)}</time>
         </p>

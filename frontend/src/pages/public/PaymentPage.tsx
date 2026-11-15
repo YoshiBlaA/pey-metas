@@ -328,8 +328,8 @@ function PendingDesktop({ payment, secondsLeft, error, backTo, ...common }: Pend
         <Steps
           large
           steps={[
-            'Abre la app de tu banco en tu celular.',
-            <>Elige <b>“CoDi”</b> › <b>Escanear QR</b> y apunta a esta pantalla.</>,
+            'Abre la app de tu banco.',
+            <>Elige <b>“CoDi”</b> y escanea el código.</>,
             'Confirma el pago. Aquí lo veremos al instante.',
           ]}
         />
@@ -486,7 +486,7 @@ function ExpiredQr({ qrString, size }: { qrString?: string; size: number }) {
   return (
     <div className="relative flex items-center justify-center overflow-hidden rounded-[20px] border-2 border-line bg-closed" style={{ width: size, height: size, borderRadius: size > 260 ? 24 : 20 }}>
       {qrString && (
-        <div className="opacity-35" aria-hidden>
+        <div className="opacity-25" aria-hidden>
           <QRCodeSVG value={qrString} size={size - 36} level={QR_LEVEL} marginSize={QR_MARGIN} fgColor="#8A97A5" bgColor="transparent" />
         </div>
       )}

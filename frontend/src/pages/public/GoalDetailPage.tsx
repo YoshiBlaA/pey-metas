@@ -1,6 +1,6 @@
 // 02 · Detalle de meta abierta  /  03 · Detalle de meta lograda (CLOSED: aviso y sin botón de aportar).
 // Móvil: una columna con barra inferior. Escritorio: dos columnas con tarjeta sticky de 400px.
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { publicApi, type GoalPublicDetail } from '../../api'
 import { useAsync } from '../../hooks/useAsync'
@@ -48,7 +48,7 @@ export function GoalDetailPage() {
 }
 
 // ---- piezas compartidas -------------------------------------------------------------
-function Banner({ goal, height, icon }: { goal: GoalPublicDetail; height: number; icon: number }) {
+function Banner({ goal, height, icon, radius = 16 }: { goal: GoalPublicDetail; height: number; icon: number; radius?: number }) {
   const achieved = goal.status === 'CLOSED'
   return (
     <div
@@ -61,7 +61,7 @@ function Banner({ goal, height, icon }: { goal: GoalPublicDetail; height: number
       }}
     >
       <span className="w-max rounded-full bg-white/85"><StatusBadge status={goal.status} /></span>
-      <span className={`ui-tile bg-white ${achieved ? 'text-achieved' : 'text-brand-600'}`} style={{ width: icon, height: icon, borderRadius: 16 }}>
+      <span className={`ui-tile bg-white ${achieved ? 'text-achieved' : 'text-brand-600'}`} style={{ width: icon, height: icon, borderRadius: radius }}>
         {achieved ? <TrophyIcon className="size-6" /> : <HeartIcon className="size-6" />}
       </span>
     </div>
@@ -129,6 +129,34 @@ function AchievedNotice({ goal }: { goal: GoalPublicDetail }) {
 }
 
 // ---- móvil (390×844) ------------------------------------------------------------------
+/** Título del detalle en móvil: 26/34 si cabe en una línea; 22/30 si ocupa dos o más. */
+function MobileTitle({ title }: { title: string }) {
+  const ref = useRef<HTMLHeadingElement>(null)
+  const [small, setSmall] = useState(false)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    // Medimos una copia invisible a 26px con el mismo ancho, para no tocar el título real.
+    const measure = () => {
+      const probe = el.cloneNode(true) as HTMLElement
+      Object.assign(probe.style, { position: 'absolute', visibility: 'hidden', width: `${el.clientWidth}px`, fontSize: '26px', lineHeight: '34px' })
+      el.parentElement!.appendChild(probe)
+      const wraps = probe.getBoundingClientRect().height > 34 * 1.5
+      probe.remove()
+      setSmall(wraps)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el.parentElement!)
+    return () => ro.disconnect()
+  }, [title])
+  return (
+    <h2 ref={ref} className="t-h1 -mb-1 break-words" style={small ? { fontSize: 22, lineHeight: '30px' } : { fontSize: 26, lineHeight: '34px' }}>
+      {title}
+    </h2>
+  )
+}
+
 function DetailMobile({ goal }: { goal: GoalPublicDetail }) {
   const achieved = goal.status === 'CLOSED'
   const remaining = Math.max(0, goal.targetAmount - goal.raisedAmount)
@@ -141,14 +169,14 @@ function DetailMobile({ goal }: { goal: GoalPublicDetail }) {
   return (
     <div className="pb-28">
       <AppBar title="Detalle de la meta" backTo="/" right={shareBtn} />
-      <div className="ui-content">
-        <Banner goal={goal} height={110} icon={44} />
-        <h2 className="t-h1 -mb-2">{goal.title}</h2>
+      <div className="ui-content" style={{ gap: 16 }}>
+        <Banner goal={goal} height={achieved ? 120 : 128} icon={52} radius={14} />
+        <MobileTitle title={goal.title} />
         {achieved && <AchievedNotice goal={goal} />}
         <section className="ui-card" aria-label="Progreso">
           <div className="flex flex-col">
             <Money amount={goal.raisedAmount} className="t-xl" />
-            <span className="t-body">recaudados de <Money amount={goal.targetAmount} /> MXN</span>
+            <span className="t-bodyL" style={{ fontSize: 15, lineHeight: '24px' }}>recaudados de <Money amount={goal.targetAmount} /> MXN</span>
           </div>
           <ProgressBar value={goal.percentage} size="lg" achieved={achieved} />
           <Stats goal={goal} />
@@ -170,7 +198,7 @@ function DetailMobile({ goal }: { goal: GoalPublicDetail }) {
             <>
               <div className="flex shrink-0 flex-col">
                 <span className="t-cap">Faltan</span>
-                <Money amount={remaining} className="t-h3 !font-bold" />
+                <Money amount={remaining} className="t-h3" style={{ fontSize: 18, fontWeight: 600 }} />
               </div>
               <ButtonLink to={`/metas/${goal.id}/aportar`}>Aportar</ButtonLink>
             </>

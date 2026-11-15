@@ -13,11 +13,13 @@ interface CardProps {
   count?: number | null
   /** Variante de escritorio: padding 18, ícono 48px, título 18px, monto 22px. */
   large?: boolean
+  /** Padding de la tarjeta (por defecto 18 en large; el móvil usa large con 16). */
+  padding?: number
   /** Contenido extra al final de la tarjeta (p. ej. montos en la vista previa). */
   extra?: React.ReactNode
 }
 
-export function GoalCard({ goal, asLink = true, count, large = false, extra }: CardProps) {
+export function GoalCard({ goal, asLink = true, count, large = false, padding, extra }: CardProps) {
   const achieved = goal.status === 'CLOSED'
   const body = (
     <>
@@ -46,7 +48,7 @@ export function GoalCard({ goal, asLink = true, count, large = false, extra }: C
       {extra}
     </>
   )
-  const style = { gap: 14, padding: large ? 18 : undefined }
+  const style = { gap: 14, padding: padding ?? (large ? 18 : undefined) }
   if (!asLink) return <div className="ui-card" style={style}>{body}</div>
   return (
     <Link to={`/metas/${goal.id}`} className="ui-card transition hover:border-brand-100" style={style}>

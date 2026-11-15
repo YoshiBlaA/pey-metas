@@ -39,7 +39,7 @@ export function GoalsListPage() {
             key={f.label}
             aria-pressed={active}
             onClick={() => setStatus(f.value)}
-            className={`rounded-full px-4 font-semibold transition ${desktop ? 'h-10 text-[14px]' : 't-small h-[34px]'} ${active ? 'bg-ink-900 text-white' : 'border border-line bg-card text-ink-900 hover:bg-brand-50'}`}
+            className={`rounded-full px-4 font-semibold transition ${desktop ? 'h-10 text-[14px]' : 'h-[34px] text-[13px]'} ${active ? 'bg-ink-900 text-white' : 'border border-line bg-card text-ink-900 hover:bg-brand-50'}`}
           >
             {f.label}
           </button>
@@ -80,7 +80,7 @@ export function GoalsListPage() {
 
   return (
     <>
-      <header className="ui-appbar !px-5">
+      <header className="ui-appbar !h-16 !px-5">
         {searching ? (
           <div className="ui-input !h-11 flex-1">
             <SearchIcon className="size-4 text-ink-400" />
@@ -97,9 +97,9 @@ export function GoalsListPage() {
         )}
       </header>
 
-      <div className="ui-content">
+      <div className="ui-content" style={{ gap: 14, paddingTop: 4 }}>
         <section className="flex flex-col gap-1">
-          <h1 className="t-h1">Apoya una meta</h1>
+          <h1 className="t-h1" style={{ fontSize: 28, lineHeight: '36px' }}>Apoya una meta</h1>
           <p className="t-body">Aporta en segundos con CoDi desde la app de tu banco. Sin comisiones.</p>
         </section>
 
@@ -107,7 +107,7 @@ export function GoalsListPage() {
 
         <section className="flex flex-col gap-3.5" aria-live="polite">
           {results}
-          {!loading && visible?.map((g) => <GoalCard key={g.id} goal={g} count={counts[g.id]} />)}
+          {!loading && visible?.map((g) => <GoalCard key={g.id} goal={g} count={counts[g.id]} large padding={16} />)}
         </section>
       </div>
     </>
