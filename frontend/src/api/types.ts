@@ -29,6 +29,11 @@ export interface GoalPublicSummary {
   percentage: number
   status: GoalStatus
   presetAmounts: number[]
+  /**
+   * Aún NO viene en el listado (petición en docs/PETICIONES.md). Opcional para que el front
+   * lo use en cuanto el backend lo agregue; en el detalle sí viene siempre.
+   */
+  paidContributionsCount?: number
 }
 
 export interface RecentContribution {

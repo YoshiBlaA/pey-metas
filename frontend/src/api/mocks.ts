@@ -16,6 +16,16 @@ const PAY_AFTER_MS = 15_000
 const QR_TTL_S = 1200 // vigencia real del QR en Pey: 20 minutos
 const MOCK_USER = { username: 'admin', password: 'admin123' }
 
+// Solo para probar la pantalla "QR expirado" en modo demo: con
+// localStorage['pey.mock.sinPago'] = '1' las aportaciones nunca se pagan y vencen.
+const mockNeverPays = () => {
+  try {
+    return localStorage.getItem('pey.mock.sinPago') === '1'
+  } catch {
+    return false
+  }
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 const latency = () => sleep(250 + Math.random() * 350)
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString()
@@ -135,6 +145,7 @@ function recalc(g: MockGoal) {
   g.updatedAt = new Date().toISOString()
 }
 function toSummary(g: MockGoal) {
+  // Igual que el backend real: el resumen NO trae paidContributionsCount.
   const { contributions: _c, createdAt: _a, updatedAt: _u, ...summary } = g
   return { ...summary, presetAmounts: [...g.presetAmounts] }
 }
@@ -148,14 +159,14 @@ const hasMax2Decimals = (n: number) => Math.abs(Math.round(n * 100) - n * 100) <
 function advance(c: MockContribution) {
   if (c.status !== 'PENDING') return
   const now = Date.now()
-  if (now - c.createdAt >= PAY_AFTER_MS) {
+  if (now >= Date.parse(c.expiresAt)) {
+    c.status = 'EXPIRED'
+  } else if (!mockNeverPays() && now - c.createdAt >= PAY_AFTER_MS) {
     c.status = 'PAID'
     c.paidAt = new Date().toISOString()
     const g = findGoal(c.goalId)
     g.contributions.unshift({ name: c.name, amount: c.amount, message: c.message, paidAt: c.paidAt })
     recalc(g)
-  } else if (now >= Date.parse(c.expiresAt)) {
-    c.status = 'EXPIRED'
   }
 }
 
@@ -170,6 +181,19 @@ function validateGoal(body: GoalRequest) {
   if (body.presetAmounts.some((p) => !(p > 0)))
     errors.push({ field: 'presetAmounts', message: 'Cada monto debe ser mayor a 0' })
   if (errors.length) throw new ApiError(400, 'La solicitud tiene datos inválidos', errors)
+}
+
+/** Payload de demostración con la forma del de CoDi (ver docs.pey.mx › Display CoDi QR). */
+export const DEMO_MARK = 'DEMO-NO-PAGABLE'
+function demoQrString(numRef: string): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+  const rnd = (n: number) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * 64)]).join('')
+  return JSON.stringify({
+    TYP: 20,
+    v: { DEV: '00000000000000000000/0' },
+    ic: { IDC: `demo${numRef}`, SER: 0, ENC: `${DEMO_MARK}:${rnd(300)}=` },
+    CRY: `${DEMO_MARK}:${rnd(40)}=`,
+  })
 }
 
 // --- API pública simulada -------------------------------------------------------------
@@ -222,9 +246,10 @@ export const mockPublicApi: PublicApi = {
       amount: body.amount,
       status: 'PENDING',
       expiresAt,
-      codiQrId: `MOCK-${numRef}`,
-      // Cadena de ejemplo; en real la manda Pey/CoDi y el banco la entiende.
-      qrString: JSON.stringify({ TYP: 19, v: { DEV: 'MOCK', CB: 'PEY' }, ic: { IDC: `MOCK-${numRef}`, REF: numRef, MONTO: body.amount } }),
+      codiQrId: `demo${numRef}`,
+      // Misma FORMA que el qrString real de Pey/CoDi (TYP, v.DEV, ic.IDC/SER/ENC, CRY), pero marcado
+      // como DEMO y con datos cifrados falsos: ninguna app de banco lo va a aceptar como cobro.
+      qrString: demoQrString(numRef),
       qrImage: null,
     }
   },
