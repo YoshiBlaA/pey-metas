@@ -43,7 +43,8 @@ Después de cambiar `.env` reinicia `npm run dev`.
 Con `VITE_USE_MOCKS=true` verás un aviso amarillo de "Modo demo" y:
 
 - Hay 4 metas de ejemplo en MXN (una ya lograda).
-- Al aportar se genera un QR de prueba; **a los ~15 s pasa a PAID** y la barra de la meta se actualiza.
+- Al aportar se genera un QR **de demostración** con la forma de un QR de CoDi (`TYP:20`) pero marcado `DEMO-NO-PAGABLE`: la app de tu banco no lo va a aceptar, y la pantalla lo avisa. **A los ~15 s pasa a PAID** y la barra de la meta se actualiza.
+- Para ver la pantalla "QR expirado" en demo: en la consola del navegador `localStorage.setItem('pey.mock.sinPago','1')` (las aportaciones ya no se pagan y vencen a los 20 min). Quítalo con `localStorage.removeItem('pey.mock.sinPago')`.
 - Admin: usuario **`admin`**, contraseña **`admin123`**.
 - Las validaciones y errores imitan al backend (400 con errores por campo, 404, 409 meta cerrada, 422 al reabrir una meta que ya alcanzó su objetivo, 401).
 - Los datos viven en memoria: al recargar la página se reinician.
@@ -54,6 +55,36 @@ Con `VITE_USE_MOCKS=true` verás un aviso amarillo de "Modo demo" y:
 2. En `frontend/.env`: `VITE_API_URL=http://localhost:8080` y `VITE_USE_MOCKS=false`.
 3. `npm run dev` → http://localhost:5173 (el CORS del backend ya permite ese origen).
 4. Para el panel usa un usuario admin configurado en el backend.
+
+### Probar un pago de verdad (CoDi de prueba)
+
+- Con llaves de **prueba** de Pey, el backend debe apuntar a `PEY_API_URL=https://api.dev.pey.mx` (por defecto apunta a producción, `https://api.pey.mx`).
+- En pruebas el QR se paga con la app simuladora **"Banco W Go B"** (no con tu banco real). En producción, con la app de cualquier banco que tenga CoDi.
+
+## El QR de CoDi (cómo se dibuja)
+
+- El front **no arma** el QR: dibuja `qrString` **tal cual** lo manda el backend (que a su vez lo recibe de Pey). Si el backend manda `qrImage` (PNG en base64), se muestra esa imagen.
+- Parámetros (según la guía "Display CoDi QR" de Pey): corrección de errores **M**, margen (zona blanca) de **4 módulos**, negro puro sobre blanco puro, **sin logo encima**, mínimo **260 px** en pantalla.
+- Archivos: `src/components/CodiQr.tsx` (QR en pantalla y canvas de 1024 px para el PNG) y `src/lib/qrFile.ts` (descargar / compartir).
+
+## Pantalla de pago según el dispositivo
+
+`src/hooks/useIsMobile.ts` decide si estás en un celular (`navigator.userAgentData.mobile`, o pantalla < 768 px, o pantalla táctil ≤ 1024 px):
+
+- **Computadora:** QR grande + pasos "Abre la app de tu banco en tu celular › CoDi › Escanear QR".
+- **Celular:** no puedes escanear tu propia pantalla, así que se muestra el monto, la cuenta regresiva y:
+  - **Descargar QR**: guarda un PNG para abrirlo en la app del banco con "Leer QR desde imagen".
+  - **Compartir** (si el navegador soporta `navigator.share` con archivos).
+  - **Mostrar QR**: para que otra persona lo escanee con su celular.
+- Ambas vistas siguen consultando el estado cada 4 s y muestran Pagado / Expirado.
+- Para forzar una vista al probar: `?vista=movil` o `?vista=escritorio` en la URL de pago.
+
+## Diseño y tamaños de pantalla
+
+- Basado en el Figma de FigmaBot (tokens en `src/index.css`, fuente Plus Jakarta Sans).
+- Público: móvil < 768 px (columna de 480 px máx.); escritorio con barra superior de 72 px y columna de 1200 px.
+- Admin: barra lateral de 248 px desde 1024 px; abajo de 1024 px, barra de pestañas inferior (Metas, Nueva meta, Cuenta).
+- **Omitido a propósito** porque el backend no lo tiene: pestañas "Aportaciones" y "Ajustes/Configuración", enlaces "¿Cómo funciona?" y "Preguntas frecuentes", "Recordarme" / "¿Olvidaste tu contraseña?", "Organiza: …", conteos de aportaciones pendientes/expiradas, referencias "PEY-XXXX" (se usa `numRef`), variaciones semanales de los KPI. El logo "CoDi" encima del QR también se omitió para no afectar la lectura.
 
 ## Rutas
 
