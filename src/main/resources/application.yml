@@ -25,13 +25,27 @@ server:
 pey:
   api-key: ${PEY_API_KEY:}
   api-url: ${PEY_API_URL:https://api.pey.mx}
+  # Vigencia del QR en segundos; Pey exige minimo 360 (si es menor la app no arranca)
   qr-expiration-seconds: ${QR_EXPIRATION_SECONDS:1200}
+  # Si es true, Pey regresa qrImage (PNG base64); es mas lento. Por defecto el front dibuja el QR desde qrString
+  generate-image: ${PEY_GENERATE_IMAGE:false}
+  # Timeouts del PeyClient en milisegundos
+  connect-timeout-ms: ${PEY_CONNECT_TIMEOUT_MS:5000}
+  read-timeout-ms: ${PEY_READ_TIMEOUT_MS:30000}
+
+# Tarea programada que marca EXPIRED las aportaciones PENDING vencidas
+webhook:
+  expiration-job:
+    delay-ms: ${WEBHOOK_EXPIRATION_JOB_DELAY_MS:60000}
+    initial-delay-ms: ${WEBHOOK_EXPIRATION_JOB_INITIAL_DELAY_MS:60000}
 
 app:
   jwt:
+    # Obligatorio: minimo 32 bytes (de preferencia Base64). Sin el la app no arranca
     secret: ${JWT_SECRET:}
     # Milisegundos (por defecto 1 hora)
     expiration: ${JWT_EXPIRATION:3600000}
+  # Admin inicial: se crea al arrancar solo si no existe y si ADMIN_PASSWORD no esta vacio
   admin:
     username: ${ADMIN_USERNAME:admin}
     password: ${ADMIN_PASSWORD:}

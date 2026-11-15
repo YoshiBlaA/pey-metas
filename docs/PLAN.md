@@ -45,7 +45,7 @@ webhook-signature: v1,...
 }
 ```
 
-Notas de la documentación: `datePaid` viene como timestamp Unix (segundos); Pey firma las entregas con Standard Webhooks (header `webhook-signature`). Pey recomienda probar en producción con montos pequeños como $0.01 MXN. Para la respuesta exacta de "Crear QR" y la verificación de firma, revisar la página específica en docs.pey.mx antes de programarla.
+El payload documentado en https://docs.pey.mx/docs/webhooks/codi/qr además incluye `bankAccountId` (solo si se mandó al crear el QR) y `metadata` (objeto); el backend los ignora. Notas de la documentación: `datePaid` viene como timestamp Unix (segundos); Pey firma las entregas con Standard Webhooks (header `webhook-signature`). Pey recomienda probar en producción con montos pequeños como $0.01 MXN. Para la respuesta exacta de "Crear QR" y la verificación de firma, revisar la página específica en docs.pey.mx antes de programarla.
 
 ## Decisiones fijas
 
@@ -81,6 +81,13 @@ Usa las **propiedades** en tu código (`@Value("${pey.api-key}")` o `@Configurat
 | `ADMIN_USERNAME` | `app.admin.username` | `admin` | GuardiaBot (admin inicial) |
 | `ADMIN_PASSWORD` | `app.admin.password` | (vacío) | GuardiaBot (admin inicial) |
 | `CORS_ORIGINS` | `app.cors.origins` | `http://localhost:3000,http://localhost:5173` | `CorsConfig` |
+| `PEY_GENERATE_IMAGE` | `pey.generate-image` | `false` | CobroBot (pide `qrImage` a Pey) |
+| `PEY_CONNECT_TIMEOUT_MS` | `pey.connect-timeout-ms` | `5000` | CobroBot (PeyClient) |
+| `PEY_READ_TIMEOUT_MS` | `pey.read-timeout-ms` | `30000` | CobroBot (PeyClient) |
+| `WEBHOOK_EXPIRATION_JOB_DELAY_MS` | `webhook.expiration-job.delay-ms` | `60000` | WebhookBot (job de expiración) |
+| `WEBHOOK_EXPIRATION_JOB_INITIAL_DELAY_MS` | `webhook.expiration-job.initial-delay-ms` | `60000` | WebhookBot (job de expiración) |
+
+Notas: `JWT_SECRET` es obligatorio (mínimo 32 bytes) o la app no arranca; `QR_EXPIRATION_SECONDS` debe ser >= 360 (mínimo de Pey).
 
 En pruebas, `src/test/resources/application.yml` usa H2 en memoria y valores falsos para todo lo anterior.
 
@@ -92,7 +99,7 @@ En pruebas, `src/test/resources/application.yml` usa H2 en memoria y valores fal
 - `common/NotFoundException` → 404.
 - `common/BusinessException` → 422 por defecto; `BusinessException.conflict(msg)` o `new BusinessException(msg, HttpStatus.CONFLICT)` → 409.
 - `common/GlobalExceptionHandler` (`@RestControllerAdvice`): 404, 409/422 de negocio, 400 de validación y cuerpo mal formado, 500 genérico. Las excepciones de Spring Security se relanzan para que respondan 401/403.
-- No existe `SecurityConfig` (es de GuardiaBot). Mientras no exista, Spring Security protege todo con login por defecto.
+- `config/SecurityConfig` (GuardiaBot): stateless con JWT, CSRF desactivado, CORS con `corsConfigurationSource`, `/api/admin/**` con rol ADMIN y públicos `/api/public/**`, `/api/webhooks/**`, `/api/auth/login`, Swagger y `/error`.
 
 ## Contratos entre módulos (nombres exactos)
 
@@ -136,3 +143,10 @@ CimientoBot primero → GuardiaBot → MetaBot → CobroBot → WebhookBot (uno 
 - Antes de hacer commit, compila con `mvnw.cmd -q -DskipTests compile` (o `mvn`) y que pase. Escribe pruebas unitarias básicas de tu parte si da tiempo.
 - No pongas la API key de Pey ni contraseñas en el código; léelas de variables de entorno.
 - Nunca inventes campos de la API de Pey: si dudas, revisa https://docs.pey.mx.
+
+## Estado tras la integración final (2026-11-15)
+
+- `main` integra `feature/auth`, `feature/goals`, `feature/contributions` y `feature/webhooks` (merges `--no-ff`, sin conflictos).
+- Peticiones de `docs/PETICIONES.md` atendidas (propiedades opcionales en `application.yml` y `.env.example`).
+- Endpoints reales: ver la tabla del README (incluye `GET /api/admin/me` y `POST /api/admin/goals/{id}/close|reopen`).
+- **Pendiente (decisión de Maruchan):** verificar la firma Standard Webhooks del webhook de Pey. El secreto `whsec_...` lo muestra el portal de Pey (Desarrollador → engrane de la API key) al crear el webhook; cada API key tiene un solo webhook. Hoy `NoOpWebhookSignatureVerifier` acepta todo y el webhook suma el `amount` que recibe, así que sin firma cualquiera podría simular pagos. Implementarlo en `webhook.security` reemplazando el bean y leyendo `PEY_WEBHOOK_SECRET` (aún no existe en `application.yml`).

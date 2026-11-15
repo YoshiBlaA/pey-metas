@@ -19,7 +19,7 @@ No edites archivos ajenos: escribe la petición aquí, haz commit en tu rama y a
 - Archivo / zona afectada: paquete `contribution` (CobroBot); revisar al integrar (CimientoBot).
 - Cambio pedido: crear en `contribution` un `@Component` que implemente `com.pey.meta.goal.service.PaidContributionsProvider` usando `ContributionRepository`. Métodos sugeridos para el repositorio: `long countByGoalIdAndStatus(Long goalId, ContributionStatus status)` y `List<Contribution> findByGoalIdAndStatusOrderByPaidAtDesc(Long goalId, ContributionStatus status, Pageable pageable)` (con `PageRequest.of(0, limit)`), mapeando cada aportación a `PaidContributionView(displayName, anonymous, amount, message, paidAt)`. El nombre "Anónimo" lo pone `GoalMapper`, no hace falta resolverlo en contribution.
 - Motivo: el detalle público `GET /api/public/goals/{id}` ya devuelve `paidContributionsCount` y `recentContributions`, pero en `feature/goals` todavía no existe `ContributionRepository`. Mientras no haya implementación, esos campos salen en 0 y lista vacía (no truena). `GoalService` la toma con `ObjectProvider`, así que basta con que exista el bean.
-- Estado: PENDIENTE
+- Estado: HECHO (CobroBot en feature/contributions: `ContributionPaidContributionsProvider` + metodos en `ContributionRepository`; integrado a main por CimientoBot)
 
 ### [2026-11-15] CobroBot (rama feature/contributions)
 - Archivo / zona afectada: `src/main/resources/application.yml` y `.env.example` (CimientoBot).
@@ -28,7 +28,7 @@ No edites archivos ajenos: escribe la petición aquí, haz commit en tu rama y a
   - `pey.connect-timeout-ms: ${PEY_CONNECT_TIMEOUT_MS:5000}` y `pey.read-timeout-ms: ${PEY_READ_TIMEOUT_MS:30000}` (timeouts del PeyClient).
   - Ya existentes y usadas tal cual: `pey.api-url`, `pey.api-key`, `pey.qr-expiration-seconds` (debe ser >= 360, minimo de Pey; si no, la app no arranca).
 - Motivo: configuracion del cliente de Pey sin secretos en codigo.
-- Estado: PENDIENTE
+- Estado: HECHO (CimientoBot, integracion final): agregadas a `application.yml` (`pey.generate-image`, `pey.connect-timeout-ms`, `pey.read-timeout-ms`) y a `.env.example` (`PEY_GENERATE_IMAGE=false`, `PEY_CONNECT_TIMEOUT_MS=5000`, `PEY_READ_TIMEOUT_MS=30000`), mismos defaults que `PeyClient`/`ContributionService`. Documentado el minimo de 360 s de `QR_EXPIRATION_SECONDS`.
 
 ### [2026-11-15] CobroBot (rama feature/contributions) - notas para integrar
 - Merge: en `feature/contributions` hice `git merge feature/goals` (commit de merge) porque necesito `GoalService`, `Goal` y `PaidContributionsProvider` para compilar. No toque `main`. No mergee `feature/auth` (no hace falta para compilar).
@@ -47,7 +47,10 @@ No edites archivos ajenos: escribe la petición aquí, haz commit en tu rama y a
   - Futuro (cuando se active la firma): una variable para el secreto del webhook de Pey, por ejemplo `PEY_WEBHOOK_SECRET` (confirmar en https://docs.pey.mx de donde sale).
   - Para GuardiaBot: `POST /api/webhooks/pey` debe quedar publico (ya cubierto por `/api/webhooks/**`) y sin CSRF, porque Pey no manda token.
 - Motivo: webhook de Pey y tarea de expiracion.
-- Estado: PENDIENTE
+- Estado: HECHO parcial (CimientoBot, integracion final):
+  - HECHO: `webhook.expiration-job.delay-ms` e `initial-delay-ms` en `application.yml` y `WEBHOOK_EXPIRATION_JOB_DELAY_MS` / `WEBHOOK_EXPIRATION_JOB_INITIAL_DELAY_MS` en `.env.example` (60000 ms, igual que el job).
+  - HECHO: `SecurityConfig` deja publico `/api/webhooks/**` y CSRF esta desactivado (API stateless con JWT).
+  - PENDIENTE (decision de Maruchan): verificacion de firma. Confirmado en docs.pey.mx: el secreto (`whsec_...`) lo muestra el portal de Pey al crear el webhook de la API key. `PEY_WEBHOOK_SECRET` solo quedo comentada en `.env.example`; no hay propiedad en `application.yml` hasta que exista codigo que la lea.
 
 ### [2026-11-15] WebhookBot (rama feature/webhooks) - notas para integrar
 - Merge: en `feature/webhooks` hice `git merge feature/contributions` (fast-forward; ya trae `feature/goals`) para compilar contra `Contribution`, `ContributionRepository` y `GoalService` reales. No mergee `feature/auth`.
