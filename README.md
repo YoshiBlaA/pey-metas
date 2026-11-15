@@ -53,45 +53,89 @@ Paquetes (`com.pey.meta`): `config` (CORS, OpenAPI, seguridad), `common` (errore
 
 El admin inicial se crea al arrancar **solo si no existe**; cambiar `ADMIN_PASSWORD` después no modifica un admin ya creado.
 
-Generar un `JWT_SECRET` aleatorio:
+Para crear el `.env`, generar `JWT_SECRET` y cargar las variables, sigue [Correr en local y recibir webhooks de Pey](#correr-en-local-y-recibir-webhooks-de-pey).
 
-```powershell
-[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])
-```
+## Correr en local y recibir webhooks de Pey
 
-```bash
-openssl rand -base64 48
-```
+Esta es la secuencia que funciona en Windows con PowerShell 5.1. **Nunca subas el `.env` ni pegues tokens, API keys o secretos en chats** (ni el authtoken de ngrok ni el `whsec_...`).
 
-## Cómo correrlo
-
-### Windows (PowerShell)
+### 1. Crear el `.env`
 
 ```powershell
 cd C:\ruta\a\pey_backend
-# Cargar .env en la sesión actual (ignora comentarios y líneas vacías)
-Get-Content .env | Where-Object { $_ -match '^\s*[^#\s][^=]*=' } | ForEach-Object {
-    $name, $value = $_ -split '=', 2
-    Set-Item -Path "env:$($name.Trim())" -Value $value.Trim()
-}
+Copy-Item .env.example .env
+notepad .env
+```
+
+Llena al menos: `DB_USER` y `DB_PASSWORD` (tu MySQL), `PEY_API_KEY`, `JWT_SECRET`, `ADMIN_PASSWORD` y `PEY_WEBHOOK_SECRET` (este último lo obtienes en el paso 5; mientras tanto el webhook responde 401).
+
+### 2. Generar `JWT_SECRET`
+
+Usa un generador criptográfico (PowerShell 5.1):
+
+```powershell
+$b = New-Object byte[] 48; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)
+```
+
+En Linux/macOS: `openssl rand -base64 48`. Pega el resultado en `JWT_SECRET=`. Si falta o es muy corto, la app no arranca (`Falta app.jwt.secret`).
+
+### 3. Cargar el `.env` y arrancar
+
+En **la misma ventana** de PowerShell (repítelo si cambias el `.env` o abres otra ventana, porque las variables solo viven en esa sesión):
+
+```powershell
+Get-Content .env | Where-Object { $_ -match '^\s*[^#\s][^=]*=' } | ForEach-Object { $k,$v = $_ -split '=',2; Set-Item "env:$($k.Trim())" $v.Trim() }
+$env:JAVA_HOME = 'C:\Users\<usuario>\.jdks\ms-21.0.12.1'   # ruta a tu JDK 21
 .\mvnw.cmd spring-boot:run
 ```
 
-### Linux / macOS
+Espera la línea `Started PeyBackendApplication`. La API queda en `http://localhost:8080` y Swagger en http://localhost:8080/swagger-ui/index.html.
+
+Si sale `Access denied for user 'root'@'localhost' (using password: NO)`, no se cargó el `.env` en esa ventana o `DB_PASSWORD` está mal.
+
+Linux / macOS:
 
 ```bash
 set -a; source .env; set +a
 ./mvnw spring-boot:run
 ```
 
-La API queda en `http://localhost:8080`.
+### 4. Exponer el puerto con ngrok
 
-### Compilar y probar
+En **otra ventana** (la app sigue corriendo en la primera):
+
+- Requiere ngrok **3.29.0 o mayor**: revisa con `ngrok version` y actualiza con `ngrok update` o desde https://ngrok.com/download. El error `ERR_NGROK_121` significa versión vieja.
+- Registra tu authtoken **entre comillas simples** en PowerShell (si empieza con `$`, las comillas dobles lo rompen y sale `ERR_NGROK_105`):
+  ```powershell
+  ngrok config add-authtoken '<token>'
+  ngrok http 8080
+  ```
+- Copia la URL `https://...` de la línea **Forwarding**.
+
+Alternativa sin cuenta: `cloudflared tunnel --url http://localhost:8080` (te da `https://<algo>.trycloudflare.com`).
+
+### 5. Registrar el webhook en Pey
+
+Según https://docs.pey.mx/docs/tutorials/getting-started/set-up-webhooks:
+
+1. En el portal de Pey ve a **Desarrollador** y haz clic en el engrane de tu API key.
+2. Pon como URL del webhook `<url-ngrok>/api/webhooks/pey` y guarda (**Crear Webhook**).
+3. Copia el secreto `whsec_...` que te muestra a `PEY_WEBHOOK_SECRET` en el `.env`.
+4. En la ventana de la app: detenla (Ctrl+C), **vuelve a cargar el `.env`** (paso 3) y reiníciala. **Sin ese secreto el endpoint responde 401 a todos los avisos de Pey y no se registra ningún pago.** Si rotas el secreto en el portal, actualiza la variable.
+
+Notas:
+
+- Con ngrok gratis **la URL cambia cada vez que reinicias ngrok**: actualízala en el portal de Pey (cada API key solo puede tener un webhook).
+- En el mismo engrane, **Webhook Logs** muestra cada intento de entrega, el payload y la respuesta de tu servidor; la consola de ngrok (http://127.0.0.1:4040) también muestra las peticiones que llegan.
+
+## Compilar y probar
 
 ```powershell
 .\mvnw.cmd -q -DskipTests compile
 .\mvnw.cmd test
 ```
+
+No compiles ni corras las pruebas mientras la app está corriendo con `spring-boot:run`: ambos usan `target/`. Detén la app primero.
 
 Las pruebas usan H2 en memoria (`src/test/resources/application.yml`) con valores falsos: no necesitan MySQL, ni Pey, ni `.env`.
 
@@ -164,23 +208,9 @@ $c   # numRef (7 dígitos), codiQrId, qrString, expiresAt, status = PENDING
 
 `qrString` es el contenido del QR: el front lo dibuja (o activa `PEY_GENERATE_IMAGE=true` para recibir `qrImage` en base64). Para esto necesitas `PEY_API_KEY` real.
 
-### 3. Exponer tu puerto local y registrar el webhook en Pey
+### 3. Tener el webhook registrado
 
-Pey necesita una URL pública HTTPS. Con cualquiera de estos túneles:
-
-```powershell
-cloudflared tunnel --url http://localhost:8080      # te da https://<algo>.trycloudflare.com
-# o
-ngrok http 8080                                     # te da https://<algo>.ngrok-free.app
-```
-
-Registro en Pey (según https://docs.pey.mx/docs/tutorials/getting-started/set-up-webhooks):
-
-1. En el portal de Pey ve a la sección **Desarrollador** y haz clic en el engrane de tu API key.
-2. Agrega la URL `https://<tu-tunel>/api/webhooks/pey` y haz clic en **Crear Webhook**.
-3. Guarda el **secreto del webhook** (`whsec_...`) que te muestra, ponlo en `PEY_WEBHOOK_SECRET` y reinicia la app. **Sin ese secreto el endpoint responde 401 a todos los avisos de Pey y no se registra ningún pago.** Si rotas el secreto en el portal, actualiza la variable.
-
-Notas de Pey: el webhook está ligado a la API key y **cada API key solo puede tener un webhook** (si cambia la URL del túnel, hay que actualizarla). En el mismo engrane, el botón **Webhook Logs** muestra cada intento de entrega, el payload y la respuesta de tu servidor.
+Antes de pagar, el túnel (ngrok) debe estar corriendo, su URL registrada en Pey y `PEY_WEBHOOK_SECRET` cargado en la app: ver los pasos 4 y 5 de [Correr en local y recibir webhooks de Pey](#correr-en-local-y-recibir-webhooks-de-pey).
 
 ### 4. Pagar
 
@@ -197,9 +227,9 @@ El endpoint `POST /api/webhooks/pey` verifica la firma [Standard Webhooks](https
 
 Para probar en local:
 
-1. Pon en `.env` un secreto propio y reinicia la app (o usa el de Pey si ya lo tienes):
+1. Pon en `.env` un secreto propio y reinicia la app (o usa el de Pey si ya lo tienes). Ojo: con un secreto propio, los avisos reales de Pey responderán 401; para recibir pagos reales vuelve a poner el `whsec_...` del portal:
    ```powershell
-   'whsec_' + [Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }) -as [byte[]])
+   $b = New-Object byte[] 32; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); 'whsec_' + [Convert]::ToBase64String($b)
    ```
 2. Crea antes una aportación (paso 2) para tener un `numRef` real, y cambia en el cuerpo `numRef`, `codiQrId` y `amount` (por ejemplo `0.01`) por los de tu aportación.
 3. Firma el cuerpo **exactamente** como lo mandas (sin acentos, para evitar problemas de codificación). El cuerpo sigue el evento `codi.qr.payment_received` de https://docs.pey.mx/docs/webhooks/codi/qr; `datePaid` es Unix en segundos.
