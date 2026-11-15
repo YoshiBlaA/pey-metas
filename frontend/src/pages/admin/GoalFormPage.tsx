@@ -12,8 +12,8 @@ import { StatusBadge } from '../../components/StatusBadge'
 import { Spinner } from '../../components/Spinner'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { PlusIcon, ShieldIcon, XIcon } from '../../components/Icons'
-import { formatMoney } from '../../lib/format'
-import { LIMITS, isEmpty, parseAmount, validateGoal, type GoalForm } from '../../lib/validation'
+import { formatAmountInput, formatMoney } from '../../lib/format'
+import { LIMITS, hasMax2Decimals, isEmpty, parseAmount, validateGoal, type GoalForm } from '../../lib/validation'
 
 const EMPTY: GoalForm = { title: '', description: '', targetText: '', presetTexts: ['50', '100', '200', '500'] }
 const short = (n: number) => (Number.isInteger(n) ? `$${n.toLocaleString('es-MX')}` : formatMoney(n))
@@ -48,7 +48,7 @@ export function GoalFormPage() {
       .getGoal(editingId)
       .then((g) => {
         if (!alive) return
-        setForm({ title: g.title, description: g.description ?? '', targetText: String(g.targetAmount), presetTexts: g.presetAmounts.map(String) })
+        setForm({ title: g.title, description: g.description ?? '', targetText: formatAmountInput(g.targetAmount), presetTexts: g.presetAmounts.map(String) })
         setCurrent({ status: g.status, percentage: g.percentage, raisedAmount: g.raisedAmount })
       })
       .catch((e) => alive && setLoadError(e))
@@ -161,17 +161,20 @@ export function GoalFormPage() {
   )
   const statusInfo = (
     <span className="t-cap !text-ink-400">
-      {editingId ? 'Se cierra o reabre desde la vista de progreso' : 'Las metas nuevas quedan abiertas'}
+      Se cierra al llegar al 100%
     </span>
   )
   const fields = (
     <>
-      <TextField label="Título" value={form.title} maxLength={LIMITS.title} onChange={(e) => set('title', e.target.value, 'title')} error={errors.title} placeholder="Ej. Rescate animal Huellitas" />
+      <TextField label="Título" value={form.title} maxLength={LIMITS.title} showCount={false} onChange={(e) => set('title', e.target.value, 'title')} error={errors.title} placeholder="Ej. Rescate animal Huellitas" />
       <TextArea label="Descripción" value={form.description} maxLength={LIMITS.description} onChange={(e) => set('description', e.target.value, 'description')} error={errors.description} placeholder="Cuenta para qué es la meta y a quién ayuda." className="!h-[120px] !text-[15px] !leading-[23px]" />
     </>
   )
   const targetField = (
-    <TextField label="Monto objetivo (MXN)" inputMode="decimal" prefix="$" value={form.targetText} onChange={(e) => set('targetText', e.target.value, 'targetAmount')} error={errors.targetAmount} placeholder="10,000.00" />
+    <TextField label="Monto objetivo (MXN)" inputMode="decimal" prefix="$" value={form.targetText} onChange={(e) => set('targetText', e.target.value, 'targetAmount')}
+      // Al salir del campo lo mostramos como "12,500.00"; al guardar se envía como número (parseAmount quita las comas).
+      onBlur={() => { const n = parseAmount(form.targetText); if (n !== null && hasMax2Decimals(form.targetText)) setForm((f) => ({ ...f, targetText: formatAmountInput(n) })) }}
+      error={errors.targetAmount} placeholder="10,000.00" />
   )
 
   if (!desktop)

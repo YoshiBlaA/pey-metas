@@ -203,8 +203,8 @@ function Kpi({ label, value, note, color = 'text-ink-900' }: { label: string; va
 
 function FilterChip({ active, onClick, kind, children }: { active: boolean; onClick: () => void; kind: 'open' | 'done' | 'closed'; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} aria-pressed={active} className={`rounded-full ${active ? 'ring-2 ring-ink-900/15' : 'opacity-80 hover:opacity-100'}`}>
-      <Chip kind={kind}>{children}</Chip>
+    <button onClick={onClick} aria-pressed={active} className={`rounded-full ${active ? '' : 'opacity-80 hover:opacity-100'}`}>
+      <Chip kind={active ? 'on' : kind}>{children}</Chip>
     </button>
   )
 }
@@ -214,12 +214,11 @@ function MobileGoalCard({ g, count }: { g: GoalAdminResponse; count: number | nu
   const done = g.status === 'CLOSED' && g.percentage >= 100
   return (
     <div className="ui-card" style={{ padding: '14px 16px', gap: 10 }}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <Link to={`/admin/metas/${g.id}`} className="t-strong hover:text-brand-700" style={{ fontSize: 15 }}>{g.title}</Link>
-          <span className="t-cap !text-ink-400">{count != null ? `${count} aportaciones · ` : ''}actualizada {formatRelative(g.updatedAt)}</span>
-        </div>
+      {/* El subtítulo ocupa todo el ancho (debajo del chip) para que quepa en una línea. */}
+      <div className="grid grid-cols-[1fr_auto] items-start gap-x-3 gap-y-0.5">
+        <Link to={`/admin/metas/${g.id}`} className="t-strong min-w-0 hover:text-brand-700" style={{ fontSize: 15 }}>{g.title}</Link>
         <StatusBadge status={g.status} percentage={g.percentage} />
+        <span className="t-cap col-span-2 truncate !text-ink-400">{count != null ? `${count} aportaciones · ` : ''}actualizada {formatRelative(g.updatedAt)}</span>
       </div>
       <div className="flex items-center gap-2.5">
         <ProgressBar value={g.percentage} achieved={done} label={`Progreso de ${g.title}`} />

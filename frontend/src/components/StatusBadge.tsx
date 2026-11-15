@@ -11,7 +11,7 @@ export function StatusBadge({ status, percentage }: { status: GoalStatus; percen
   return <Chip kind={kind}>{text}</Chip>
 }
 
-export type ChipKind = 'open' | 'paid' | 'done' | 'pending' | 'expired' | 'closed'
+export type ChipKind = 'open' | 'paid' | 'done' | 'pending' | 'expired' | 'closed' | 'on'
 
 /** Chip genérico del sistema de diseño (padding 4/10, 12px 600, punto de 6px). */
 export function Chip({ kind, children }: { kind: ChipKind; children: React.ReactNode }) {

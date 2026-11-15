@@ -111,6 +111,9 @@ html {
   .ui-chip.expired > i { background: var(--color-expired); }
   .ui-chip.closed { background: var(--color-closed); color: var(--color-ink-700); }
   .ui-chip.closed > i { background: var(--color-ink-400); }
+  /* Filtro activo: como las pastillas .pill.on del sitio público (sin borde). */
+  .ui-chip.on { background: var(--color-ink-900); color: #fff; }
+  .ui-chip.on > i { background: #fff; }
 
   /* Barra de progreso: 8px (grande 14px) */
   .ui-bar { height: 8px; border-radius: 999px; background: var(--color-track); overflow: hidden; width: 100%; }
