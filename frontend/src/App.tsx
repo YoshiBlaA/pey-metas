@@ -19,6 +19,9 @@ export function App() {
         <Route index element={<GoalsListPage />} />
         <Route path="metas/:id" element={<GoalDetailPage />} />
         <Route path="metas/:id/aportar" element={<ContributePage />} />
+      </Route>
+      {/* La pantalla de pago usa una columna más ancha en escritorio (QR grande + instrucciones). */}
+      <Route element={<PublicLayout />}>
         <Route path="pago/:numRef" element={<PaymentPage />} />
       </Route>
 

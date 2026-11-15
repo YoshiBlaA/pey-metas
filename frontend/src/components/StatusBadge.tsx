@@ -6,16 +6,19 @@ import type { GoalStatus } from '../api'
  * una meta cerrada a mano antes de llegar al 100 %.
  */
 export function StatusBadge({ status, percentage }: { status: GoalStatus; percentage?: number }) {
-  const kind = status === 'OPEN' ? 'open' : percentage !== undefined && percentage < 100 ? 'closed' : 'achieved'
-  const s = {
-    open: { cls: 'bg-brand-100 text-brand-700', dot: 'bg-brand-600', text: 'Abierta' },
-    achieved: { cls: 'bg-achieved-50 text-achieved', dot: 'bg-achieved', text: 'Lograda' },
-    closed: { cls: 'bg-closed text-ink-700', dot: 'bg-ink-400', text: 'Cerrada' },
-  }[kind]
+  const kind = status === 'OPEN' ? 'open' : percentage !== undefined && percentage < 100 ? 'closed' : 'done'
+  const text = { open: 'Abierta', done: 'Lograda', closed: 'Cerrada' }[kind]
+  return <Chip kind={kind}>{text}</Chip>
+}
+
+export type ChipKind = 'open' | 'paid' | 'done' | 'pending' | 'expired' | 'closed'
+
+/** Chip genérico del sistema de diseño (padding 4/10, 12px 600, punto de 6px). */
+export function Chip({ kind, children }: { kind: ChipKind; children: React.ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>
-      <span className={`size-1.5 rounded-full ${s.dot}`} aria-hidden />
-      {s.text}
+    <span className={`ui-chip ${kind}`}>
+      <i aria-hidden />
+      {children}
     </span>
   )
 }
