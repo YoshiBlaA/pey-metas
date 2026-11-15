@@ -40,3 +40,18 @@ No edites archivos ajenos: escribe la petición aquí, haz commit en tu rama y a
   - `expiresAt` se calcula con la hora de ANTES de llamar a Pey (conservador). Puede llegar un pago para una aportacion ya EXPIRED: marcala PAID igual y suma con `GoalService.registerPayment` (el dinero ya se cobro).
   - `GET /api/public/contributions/{numRef}` reporta EXPIRED si esta PENDING y ya paso `expiresAt`, pero no escribe en BD (eso es de tu tarea programada con `findByStatusAndExpiresAtBefore`).
 - Estado: INFORMATIVO
+### [2026-11-15] WebhookBot (rama feature/webhooks)
+- Archivo / zona afectada: `src/main/resources/application.yml` y `.env.example` (CimientoBot); `config/SecurityConfig` (GuardiaBot).
+- Cambio pedido:
+  - Opcional: `webhook.expiration-job.delay-ms: ${WEBHOOK_EXPIRATION_JOB_DELAY_MS:60000}` y `webhook.expiration-job.initial-delay-ms: ${WEBHOOK_EXPIRATION_JOB_INITIAL_DELAY_MS:60000}`. El job ya usa esos defaults si faltan.
+  - Futuro (cuando se active la firma): una variable para el secreto del webhook de Pey, por ejemplo `PEY_WEBHOOK_SECRET` (confirmar en https://docs.pey.mx de donde sale).
+  - Para GuardiaBot: `POST /api/webhooks/pey` debe quedar publico (ya cubierto por `/api/webhooks/**`) y sin CSRF, porque Pey no manda token.
+- Motivo: webhook de Pey y tarea de expiracion.
+- Estado: PENDIENTE
+
+### [2026-11-15] WebhookBot (rama feature/webhooks) - notas para integrar
+- Merge: en `feature/webhooks` hice `git merge feature/contributions` (fast-forward; ya trae `feature/goals`) para compilar contra `Contribution`, `ContributionRepository` y `GoalService` reales. No mergee `feature/auth`.
+- Firma del webhook: `webhook.security.WebhookSignatureVerifier` con `NoOpWebhookSignatureVerifier` que acepta todo y tiene el TODO para Standard Webhooks. No se implemento porque no se pidio.
+- Concurrencia: el webhook y el job bloquean la fila de la aportacion con `EntityManager.refresh(..., PESSIMISTIC_WRITE)` antes de cambiarla, asi un aviso repetido al mismo tiempo no se cuenta dos veces y el job no pisa un PAID. No hizo falta cambiar `ContributionRepository`.
+- Si `GoalService.registerPayment` o la BD fallan, se hace rollback y el endpoint responde 5xx para que Pey reintente.
+- Estado: INFORMATIVO
