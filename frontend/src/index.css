@@ -49,10 +49,14 @@ html {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Foco visible y consistente para navegación con teclado (accesibilidad). */
-:focus-visible {
-  outline: 3px solid var(--color-brand-400);
-  outline-offset: 2px;
+/* Foco visible y consistente para navegación con teclado (accesibilidad).
+   Va en @layer base para que los componentes (p. ej. .ui-input, cuyo foco es
+   solo el borde de 2px) puedan quitarlo: lo que está fuera de capa siempre gana. */
+@layer base {
+  :focus-visible {
+    outline: 3px solid var(--color-brand-400);
+    outline-offset: 2px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
