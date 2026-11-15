@@ -35,5 +35,18 @@ public record GoalRequest(
                 @NotNull(message = "Los montos predeterminados no pueden ir vac\u00edos")
                 @DecimalMin(value = "0.01", message = "Cada monto predeterminado debe ser mayor a 0")
                 @Digits(integer = 10, fraction = 2, message = "Cada monto admite hasta 10 enteros y 2 decimales")
-                BigDecimal> presetAmounts) {
+                BigDecimal> presetAmounts,
+
+        @Schema(description = "Quien organiza la meta (opcional)", example = "Familia Ruiz")
+        @Size(max = 100, message = "El organizador admite máximo 100 caracteres")
+        String organizer,
+
+        @Schema(description = "Ciudad (opcional)", example = "Puebla")
+        @Size(max = 100, message = "La ciudad admite máximo 100 caracteres")
+        String city) {
+
+    /** Constructor sin organizador ni ciudad (compatibilidad). */
+    public GoalRequest(String title, String description, BigDecimal targetAmount, List<BigDecimal> presetAmounts) {
+        this(title, description, targetAmount, presetAmounts, null, null);
+    }
 }

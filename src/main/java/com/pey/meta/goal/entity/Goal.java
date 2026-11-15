@@ -46,6 +46,14 @@ public class Goal {
     @Column(length = 2000)
     private String description;
 
+    /** Quien organiza la meta (opcional), p. ej. "Familia Ruiz". */
+    @Column(length = 100)
+    private String organizer;
+
+    /** Ciudad de la meta (opcional), p. ej. "Puebla". */
+    @Column(length = 100)
+    private String city;
+
     @Column(name = "target_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal targetAmount;
 

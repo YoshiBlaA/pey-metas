@@ -134,9 +134,11 @@ class GoalServiceTest {
         when(goalRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(g));
 
         Goal result = goalService.update(1L, new GoalRequest(" Nueva ", "  ", new BigDecimal("500"),
-                List.of(new BigDecimal("200"), new BigDecimal("50"), new BigDecimal("50.00"))));
+                List.of(new BigDecimal("200"), new BigDecimal("50"), new BigDecimal("50.00")), " Familia Ruiz ", "  "));
 
         assertThat(result.getStatus()).isEqualTo(GoalStatus.CLOSED);
+        assertThat(result.getOrganizer()).isEqualTo("Familia Ruiz");
+        assertThat(result.getCity()).isNull();
         assertThat(result.getTitle()).isEqualTo("Nueva");
         assertThat(result.getDescription()).isNull();
         assertThat(result.getPresetAmounts()).containsExactly(new BigDecimal("50.00"), new BigDecimal("200.00"));

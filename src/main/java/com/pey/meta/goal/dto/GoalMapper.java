@@ -35,20 +35,23 @@ public final class GoalMapper {
     }
 
     public static GoalAdminResponse toAdmin(Goal g) {
-        return new GoalAdminResponse(g.getId(), g.getTitle(), g.getDescription(), g.getTargetAmount(),
+        return new GoalAdminResponse(g.getId(), g.getTitle(), g.getDescription(), g.getOrganizer(),
+                g.getCity(), g.getTargetAmount(),
                 g.getRaisedAmount(), percentage(g.getRaisedAmount(), g.getTargetAmount()), g.getStatus(),
                 List.copyOf(g.getPresetAmounts()), g.getCreatedAt(), g.getUpdatedAt());
     }
 
     public static GoalPublicSummaryResponse toPublicSummary(Goal g) {
-        return new GoalPublicSummaryResponse(g.getId(), g.getTitle(), g.getDescription(), g.getTargetAmount(),
+        return new GoalPublicSummaryResponse(g.getId(), g.getTitle(), g.getDescription(), g.getOrganizer(),
+                g.getCity(), g.getTargetAmount(),
                 g.getRaisedAmount(), percentage(g.getRaisedAmount(), g.getTargetAmount()), g.getStatus(),
                 List.copyOf(g.getPresetAmounts()));
     }
 
     public static GoalPublicDetailResponse toPublicDetail(Goal g, long paidCount,
                                                           List<RecentContributionResponse> recent) {
-        return new GoalPublicDetailResponse(g.getId(), g.getTitle(), g.getDescription(), g.getTargetAmount(),
+        return new GoalPublicDetailResponse(g.getId(), g.getTitle(), g.getDescription(), g.getOrganizer(),
+                g.getCity(), g.getTargetAmount(),
                 g.getRaisedAmount(), percentage(g.getRaisedAmount(), g.getTargetAmount()), g.getStatus(),
                 List.copyOf(g.getPresetAmounts()), paidCount, recent == null ? List.of() : recent);
     }

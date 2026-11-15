@@ -172,8 +172,14 @@ public class GoalService {
         goal.setTitle(request.title().trim());
         String description = request.description();
         goal.setDescription(description == null || description.isBlank() ? null : description.trim());
+        goal.setOrganizer(blankToNull(request.organizer()));
+        goal.setCity(blankToNull(request.city()));
         goal.setTargetAmount(request.targetAmount().setScale(2, RoundingMode.HALF_UP));
         goal.replacePresetAmounts(normalizePresets(request.presetAmounts()));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     /** Escala a 2 decimales, quita repetidos y ordena de menor a mayor. */

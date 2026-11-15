@@ -12,6 +12,10 @@ public record GoalPublicSummaryResponse(
         Long id,
         String title,
         String description,
+        @Schema(description = "Quien organiza la meta", nullable = true)
+        String organizer,
+        @Schema(description = "Ciudad de la meta", nullable = true)
+        String city,
         BigDecimal targetAmount,
         BigDecimal raisedAmount,
         @Schema(description = "Porcentaje entero 0-100; solo marca 100 cuando de verdad se alcanzo la meta")
