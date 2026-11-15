@@ -3,12 +3,12 @@ package com.pey.meta.webhook.security;
 import org.springframework.http.HttpHeaders;
 
 /**
- * Punto de extension para verificar la firma del webhook de Pey (header webhook-signature, Standard Webhooks).
- * Recibe el cuerpo crudo porque la firma se calcula sobre los bytes exactos que mando Pey.
+ * Verifica la firma del webhook de Pey. Recibe el cuerpo crudo (bytes exactos que mando Pey)
+ * porque la firma se calcula sobre esos bytes, no sobre el JSON ya parseado.
  */
 @FunctionalInterface
 public interface WebhookSignatureVerifier {
 
-    /** @return true si la firma es valida (o si la verificacion aun no esta activa). */
-    boolean verify(String rawBody, HttpHeaders headers);
+    /** @return true si la firma es valida. */
+    boolean verify(byte[] rawBody, HttpHeaders headers);
 }
