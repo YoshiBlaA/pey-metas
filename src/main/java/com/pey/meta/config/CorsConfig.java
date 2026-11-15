@@ -12,6 +12,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
  * CORS para el front-end. Lee {@code app.cors.origins} (variable CORS_ORIGINS, separada por comas).
+ * Cada valor es un patrón de origen ({@code setAllowedOriginPatterns}), así que acepta orígenes exactos
+ * ({@code http://localhost:5173}), comodines ({@code https://*.vercel.app}) o {@code *} para cualquier origen.
+ * Con patrones, {@code *} funciona aun con {@code allowCredentials(true)} (el navegador recibe el origen real).
+ * Usa {@code *} solo en desarrollo; en producción lista los dominios del front.
  * SecurityConfig (GuardiaBot) debe activar CORS con {@code http.cors(Customizer.withDefaults())},
  * que toma este bean {@code corsConfigurationSource} automáticamente.
  */
@@ -27,7 +31,7 @@ public class CorsConfig {
                 .toList();
 
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(allowedOrigins);
+        config.setAllowedOriginPatterns(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setExposedHeaders(List.of("Authorization"));

@@ -20,6 +20,8 @@ spring:
 
 server:
   port: ${PORT:8080}
+  # Respeta X-Forwarded-* de proxies/túneles (ngrok) para que springdoc anuncie https y la URL pública
+  forward-headers-strategy: framework
 
 # Integración con Pey (https://docs.pey.mx)
 pey:

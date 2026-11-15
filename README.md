@@ -43,7 +43,7 @@ Paquetes (`com.pey.meta`): `config` (CORS, OpenAPI, seguridad), `common` (errore
 | `JWT_EXPIRATION` | `app.jwt.expiration` | `3600000` | no | Vigencia del JWT en milisegundos |
 | `ADMIN_USERNAME` | `app.admin.username` | `admin` | no | Admin inicial |
 | `ADMIN_PASSWORD` | `app.admin.password` | (vacío) | sí, la primera vez | Si está vacío no se crea el admin inicial |
-| `CORS_ORIGINS` | `app.cors.origins` | `http://localhost:3000,http://localhost:5173` | no | Orígenes del front, separados por comas |
+| `CORS_ORIGINS` | `app.cors.origins` | `http://localhost:3000,http://localhost:5173` | no | Orígenes del front, separados por comas. Acepta patrones (`https://*.vercel.app`) o `*` (cualquier origen; **solo para desarrollo**) |
 | `WEBHOOK_EXPIRATION_JOB_DELAY_MS` | `webhook.expiration-job.delay-ms` | `60000` | no | Cada cuánto se marcan expiradas las aportaciones vencidas |
 | `WEBHOOK_EXPIRATION_JOB_INITIAL_DELAY_MS` | `webhook.expiration-job.initial-delay-ms` | `60000` | no | Espera antes de la primera corrida |
 | `PEY_WEBHOOK_SECRET` | `pey.webhook-secret` | (vacío) | **sí, para recibir pagos** | Secreto `whsec_...` del webhook (portal de Pey). Vacío o mal formado = el webhook responde 401 a todo |
@@ -111,6 +111,8 @@ En **otra ventana** (la app sigue corriendo en la primera):
   ngrok http 8080
   ```
 - Copia la URL `https://...` de la línea **Forwarding**.
+
+Si el front consume la API a través de la URL de ngrok, debe mandar el header `ngrok-skip-browser-warning: true` en cada petición; si no, ngrok gratis responde con su página HTML de advertencia en lugar del JSON. Agrega el dominio del front a `CORS_ORIGINS` (o `*` mientras desarrollas). La app ya respeta los headers `X-Forwarded-*` (`server.forward-headers-strategy: framework`), así que Swagger abierto desde la URL de ngrok usa `https`.
 
 Alternativa sin cuenta: `cloudflared tunnel --url http://localhost:8080` (te da `https://<algo>.trycloudflare.com`).
 
