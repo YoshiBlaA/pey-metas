@@ -72,10 +72,9 @@ Con `VITE_USE_MOCKS=true` verás un aviso amarillo de "Modo demo" y:
 `src/hooks/useIsMobile.ts` decide si estás en un celular (`navigator.userAgentData.mobile`, o pantalla < 768 px, o pantalla táctil ≤ 1024 px):
 
 - **Computadora:** QR grande + pasos "Abre la app de tu banco en tu celular › CoDi › Escanear QR".
-- **Celular:** no puedes escanear tu propia pantalla, así que se muestra el monto, la cuenta regresiva y:
-  - **Descargar QR**: guarda un PNG para abrirlo en la app del banco con "Leer QR desde imagen".
+- **Celular:** igual que el diseño, el QR se ve directo (para que otra persona lo escanee) con la cuenta regresiva y los 3 pasos de "Cómo pagar". Como extra, debajo:
+  - **Descargar QR**: guarda un PNG para pagar desde el mismo celular con "Leer QR desde imagen" en la app del banco.
   - **Compartir** (si el navegador soporta `navigator.share` con archivos).
-  - **Mostrar QR**: para que otra persona lo escanee con su celular.
 - Ambas vistas siguen consultando el estado cada 4 s y muestran Pagado / Expirado.
 - Para forzar una vista al probar: `?vista=movil` o `?vista=escritorio` en la URL de pago.
 
