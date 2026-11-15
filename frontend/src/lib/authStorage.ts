@@ -1,8 +1,14 @@
 // Dónde vive la sesión del admin. "Recordarme" = localStorage (sobrevive al cerrar el navegador);
 // sin marcar = sessionStorage (se borra al cerrar la pestaña/navegador).
 export const SESSION_KEY = 'pey.admin.session'
+/**
+ * Versión del formato. Las sesiones de versiones anteriores (que se guardaban siempre en localStorage,
+ * sin "Recordarme") se descartan: hay que iniciar sesión otra vez.
+ */
+const SESSION_VERSION = 2
 
 export interface StoredSession {
+  v?: number
   token: string
   username: string
   /** Nombre de la persona u organización, si la cuenta lo tiene. */
@@ -23,7 +29,12 @@ function safe<T>(fn: () => T, fallback: T): T {
 export function readStoredSession(): StoredSession | null {
   const raw = safe(() => sessionStorage.getItem(SESSION_KEY) ?? localStorage.getItem(SESSION_KEY), null)
   if (!raw) return null
-  return safe(() => JSON.parse(raw) as StoredSession, null)
+  const s = safe(() => JSON.parse(raw) as StoredSession, null)
+  if (!s || s.v !== SESSION_VERSION || !s.token) {
+    clearStoredSession()
+    return null
+  }
+  return s
 }
 
 /** true si la sesión actual está en localStorage (se marcó "Recordarme"). */
@@ -31,7 +42,7 @@ export const isRemembered = () => safe(() => localStorage.getItem(SESSION_KEY) !
 
 export function writeStoredSession(s: StoredSession, remember: boolean) {
   clearStoredSession()
-  safe(() => (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(s)), undefined)
+  safe(() => (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify({ ...s, v: SESSION_VERSION })), undefined)
 }
 
 export function clearStoredSession() {
