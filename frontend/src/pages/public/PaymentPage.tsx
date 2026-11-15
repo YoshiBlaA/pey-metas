@@ -22,7 +22,7 @@ import { PaymentChip } from '../../components/PaymentChip'
 import { Button, ButtonLink } from '../../components/Button'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { Spinner } from '../../components/Spinner'
-import { BackIcon, CheckIcon, ClockIcon, DownloadIcon, InfoIcon, PhoneIcon, QrIcon, RefreshIcon, ShareIcon } from '../../components/Icons'
+import { BackIcon, CheckIcon, ClockIcon, DownloadIcon, InfoIcon, RefreshIcon, ShareIcon } from '../../components/Icons'
 
 const POLL_MS = 4000
 const QR_TTL_S = 1200 // vigencia configurada en el backend (20 min); solo para la barrita del contador
@@ -234,11 +234,11 @@ function DemoNotice() {
   )
 }
 
-function Steps({ steps, large = false }: { steps: React.ReactNode[]; large?: boolean }) {
+function Steps({ steps, large = false, gap }: { steps: React.ReactNode[]; large?: boolean; gap?: number }) {
   return (
-    <ol className={`flex flex-col ${large ? 'gap-3' : 'gap-2.5'}`}>
+    <ol className={`flex flex-col ${gap ? '' : large ? 'gap-3' : 'gap-2.5'}`} style={gap ? { gap } : undefined}>
       {steps.map((s, i) => (
-        <li key={i} className={`flex items-start ${large ? 'gap-3' : 'gap-2.5'}`}>
+        <li key={i} className={`flex items-start ${gap ? '' : large ? 'gap-3' : 'gap-2.5'}`} style={gap ? { gap } : undefined}>
           <span className="ui-num">{i + 1}</span>
           <span className="t-body" style={large ? { fontSize: 15 } : undefined}>{s}</span>
         </li>
@@ -278,7 +278,7 @@ function useQrFile(payment: StoredPayment) {
       downloadBlob(await getQrPng(payment.qrImage, canvasRef.current), qrFileName(payment.numRef))
       setMsg('QR descargado. Búscalo en tu galería o en Descargas.')
     } catch {
-      setMsg('No pudimos descargar el QR. Usa “Mostrar QR” y toma una captura de pantalla.')
+      setMsg('No pudimos descargar el QR. Toma una captura de pantalla del código.')
     }
   }
   const share = async () => {
@@ -340,54 +340,44 @@ function PendingDesktop({ payment, secondsLeft, error, backTo, ...common }: Pend
   )
 }
 
-/** MÓVIL: pagar desde el mismo celular (descargar/compartir) o mostrar el QR a otra persona. */
+/** MÓVIL: igual que el diseño, el QR va visible directo (para escanearlo desde otro celular).
+ *  Extra debajo: Descargar QR (para "Leer QR desde imagen" en la app del banco) y Compartir. */
 function PendingMobile({ payment, secondsLeft, error, ...common }: PendingProps) {
   const { download, share, shareable, msg, canvas } = useQrFile(payment)
-  const [showQr, setShowQr] = useState(false)
   return (
     <div className="ui-content">
       {canvas}
       <div className="ui-card items-center text-center" style={{ gap: 14 }}>
         <PaymentHeader status="PENDING" {...common} />
-        {showQr ? (
-          <>
-            <QrFrame payment={payment} size={280} />
-            <p className="t-cap">Muéstrale este código a quien va a pagar para que lo escanee con CoDi.</p>
-          </>
-        ) : (
-          <div className="flex w-full items-center gap-3 rounded-xl bg-brand-50 p-3 text-left">
-            <span className="ui-tile size-10 bg-brand-100 text-brand-700"><PhoneIcon /></span>
-            <p className="t-cap !text-brand-700">
-              Estás en tu celular: guarda el QR y ábrelo desde la app de tu banco con <b>“Leer QR desde imagen”</b>.
-            </p>
-          </div>
-        )}
+        <QrFrame payment={payment} size={280} />
         <Countdown secondsLeft={secondsLeft} />
         <Waiting error={error} />
       </div>
 
+      {/* Pasos del diseño (mobile.html): .num de 24px, .body de 14px, separación de 10px. */}
+      <Steps
+        gap={10}
+        steps={[
+          'Abre la app de tu banco.',
+          'Elige “CoDi” y escanea el código.',
+          'Confirma el pago. Aquí lo veremos al instante.',
+        ]}
+      />
+
       <div className="flex flex-col gap-2.5">
-        <Button onClick={() => void download()}>
+        <Button variant="secondary" onClick={() => void download()}>
           <DownloadIcon /> Descargar QR
         </Button>
         {shareable && (
-          <Button variant="secondary" onClick={() => void share()}>
+          <Button variant="ghost" onClick={() => void share()}>
             <ShareIcon /> Compartir QR
           </Button>
         )}
-        <Button variant="ghost" onClick={() => setShowQr((v) => !v)} aria-expanded={showQr}>
-          <QrIcon /> {showQr ? 'Ocultar QR' : 'Mostrar QR'}
-        </Button>
+        <p className="t-cap text-center !text-ink-400">
+          ¿Pagas desde este mismo celular? Descarga el QR y ábrelo en tu banco con “Leer QR desde imagen”.
+        </p>
         {msg && <p className="t-cap text-center" role="status">{msg}</p>}
       </div>
-
-      <Steps
-        steps={[
-          <>Toca <b>Descargar QR</b>{shareable ? ' (o Compartir › Guardar imagen)' : ''}.</>,
-          <>Abre la app de tu banco › <b>CoDi</b> › <b>Leer QR desde imagen</b> (o el ícono de galería al escanear).</>,
-          'Elige la imagen y confirma el pago. Aquí lo veremos al instante.',
-        ]}
-      />
       <DemoNotice />
     </div>
   )
