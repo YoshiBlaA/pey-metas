@@ -215,3 +215,22 @@ html {
     align-items: center; justify-content: center;
   }
 }
+
+/* ---- Landing: manchas de color que flotan y tarjetas "apiladas" (estilo Colorbears) ---- */
+@keyframes blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(24px, -18px) scale(1.06); }
+  66% { transform: translate(-18px, 14px) scale(0.96); }
+}
+.lp-blob {
+  position: absolute; border-radius: 999px; filter: blur(48px); opacity: 0.55; pointer-events: none;
+  animation: blob-float 14s ease-in-out infinite;
+}
+.lp-stack {
+  border-radius: 24px; transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.lp-stack:hover { transform: translateY(-3px); }
+@media (prefers-reduced-motion: reduce) {
+  .lp-blob { animation: none; }
+  .lp-stack, .lp-stack:hover { transition: none; transform: none; }
+}
