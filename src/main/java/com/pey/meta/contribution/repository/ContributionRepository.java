@@ -22,6 +22,10 @@ public interface ContributionRepository extends JpaRepository<Contribution, Long
     /** Para la tarea de expirados (WebhookBot): PENDING con expiresAt anterior a time. */
     List<Contribution> findByStatusAndExpiresAtBefore(ContributionStatus status, Instant time);
 
+    /** Para conciliar con Pey: aportaciones en esos estados, con QR, creadas despues de {@code since}. */
+    List<Contribution> findTop50ByStatusInAndCodiQrIdIsNotNullAndCreatedAtAfterOrderByCreatedAtAsc(
+            java.util.Collection<ContributionStatus> statuses, Instant since);
+
     long countByGoalIdAndStatus(Long goalId, ContributionStatus status);
 
     List<Contribution> findByGoalIdAndStatusOrderByPaidAtDesc(Long goalId, ContributionStatus status, Pageable pageable);
