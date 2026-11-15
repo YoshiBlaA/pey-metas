@@ -16,6 +16,7 @@ import { Spinner } from '../../components/Spinner'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { HeartIcon, UsersIcon } from '../../components/Icons'
 import { formatMoney } from '../../lib/format'
+import { Organizer } from '../../components/Organizer'
 import { LIMITS, isEmpty, parseAmount, validateContribution, type ContributionForm } from '../../lib/validation'
 import { savePayment } from '../../lib/paymentStorage'
 
@@ -206,6 +207,7 @@ export function ContributePage() {
             <GoalIcon achieved={false} size={40} />
             <div className="flex min-w-0 flex-col gap-0.5">
               <span className="t-strong truncate">{goal.title}</span>
+              <Organizer goal={goal} className="truncate !text-ink-400" />
               <span className="t-cap">
                 <Money amount={goal.raisedAmount} /> de <Money amount={goal.targetAmount} /> MXN · {goal.percentage}%
               </span>
@@ -243,7 +245,10 @@ function Summary({ goal }: { goal: GoalPublicDetail }) {
         <span className="w-max rounded-full bg-white/85"><StatusBadge status={goal.status} /></span>
         <span className="ui-tile size-11 bg-white text-brand-600"><HeartIcon /></span>
       </div>
-      <h2 className="t-h2">{goal.title}</h2>
+      <div className="flex flex-col gap-1">
+        <h2 className="t-h2">{goal.title}</h2>
+        <Organizer goal={goal} />
+      </div>
       <div className="flex items-end justify-between">
         <div className="flex flex-col">
           <Money amount={goal.raisedAmount} className="t-h2" />

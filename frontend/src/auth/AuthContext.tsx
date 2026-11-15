@@ -1,41 +1,30 @@
-// Sesión del administrador: guarda el token en localStorage y lo comparte con toda la app.
+// Sesión del administrador: guarda el token (localStorage con "Recordarme", si no sessionStorage) y lo comparte con toda la app.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { adminApi, configureAuth } from '../api'
+import { clearStoredSession, readStoredSession, writeStoredSession, type StoredSession } from '../lib/authStorage'
 
-const STORAGE_KEY = 'pey.admin.session'
-
-interface Session {
-  token: string
-  username: string
-  /** Momento (ms) en que vence el token, calculado con expiresIn. */
-  expiresAt: number
-}
+type Session = StoredSession
 
 interface AuthContextValue {
   session: Session | null
   isAuthenticated: boolean
-  login: (username: string, password: string) => Promise<void>
+  /** remember = true guarda la sesión en localStorage; false, en sessionStorage. */
+  login: (username: string, password: string, remember?: boolean) => Promise<void>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 function readSession(): Session | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    const s = JSON.parse(raw) as Session
-    return s.expiresAt > Date.now() ? s : null // token vencido = sin sesión
-  } catch {
-    return null
-  }
+  const s = readStoredSession()
+  return s && s.expiresAt > Date.now() ? s : null // token vencido = sin sesión
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(readSession)
 
   const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY)
+    clearStoredSession()
     setSession(null)
   }, [])
 
@@ -50,15 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(id)
   }, [session, logout])
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string, remember = false) => {
     const res = await adminApi.login({ username, password })
     const s: Session = { token: res.token, username, expiresAt: Date.now() + res.expiresIn * 1000 }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
+    writeStoredSession(s, remember)
     setSession(s)
     // Validamos el token con /api/admin/me y usamos el nombre que devuelve el backend.
     const me = await adminApi.me()
     const withName = { ...s, username: me.username }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(withName))
+    writeStoredSession(withName, remember)
     setSession(withName)
   }, [])
 

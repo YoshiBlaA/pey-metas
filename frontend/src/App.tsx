@@ -6,6 +6,9 @@ import { GoalsListPage } from './pages/public/GoalsListPage'
 import { GoalDetailPage } from './pages/public/GoalDetailPage'
 import { ContributePage } from './pages/public/ContributePage'
 import { PaymentPage } from './pages/public/PaymentPage'
+import { FaqPage, HowItWorksPage } from './pages/public/InfoPages'
+import { ContributionsPage } from './pages/admin/ContributionsPage'
+import { SettingsPage } from './pages/admin/SettingsPage'
 import { LoginPage } from './pages/admin/LoginPage'
 import { AdminGoalsPage } from './pages/admin/AdminGoalsPage'
 import { GoalFormPage } from './pages/admin/GoalFormPage'
@@ -19,6 +22,8 @@ export function App() {
         <Route index element={<GoalsListPage />} />
         <Route path="metas/:id" element={<GoalDetailPage />} />
         <Route path="metas/:id/aportar" element={<ContributePage />} />
+        <Route path="como-funciona" element={<HowItWorksPage />} />
+        <Route path="preguntas-frecuentes" element={<FaqPage />} />
       </Route>
       {/* La pantalla de pago usa una columna más ancha en escritorio (QR grande + instrucciones). */}
       <Route element={<PublicLayout />}>
@@ -38,6 +43,8 @@ export function App() {
         <Route path="metas/nueva" element={<GoalFormPage />} />
         <Route path="metas/:id" element={<GoalProgressPage />} />
         <Route path="metas/:id/editar" element={<GoalFormPage />} />
+        <Route path="aportaciones" element={<ContributionsPage />} />
+        <Route path="configuracion" element={<SettingsPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

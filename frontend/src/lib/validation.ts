@@ -18,6 +18,8 @@ export const LIMITS = {
   title: 150,
   description: 2000,
   presets: 12,
+  organizer: 100,
+  city: 100,
 } as const
 
 export interface ContributionForm {
@@ -45,13 +47,17 @@ export interface GoalForm {
   description: string
   targetText: string
   presetTexts: string[]
+  organizer: string
+  city: string
 }
 
-export function validateGoal(f: GoalForm): Errors<'title' | 'description' | 'targetAmount' | 'presetAmounts'> {
-  const e: Errors<'title' | 'description' | 'targetAmount' | 'presetAmounts'> = {}
+export function validateGoal(f: GoalForm): Errors<'title' | 'description' | 'targetAmount' | 'presetAmounts' | 'organizer' | 'city'> {
+  const e: Errors<'title' | 'description' | 'targetAmount' | 'presetAmounts' | 'organizer' | 'city'> = {}
   if (!f.title.trim()) e.title = 'El título es obligatorio'
   else if (f.title.length > LIMITS.title) e.title = `Máximo ${LIMITS.title} caracteres`
   if (f.description.length > LIMITS.description) e.description = `Máximo ${LIMITS.description} caracteres`
+  if (f.organizer.trim().length > LIMITS.organizer) e.organizer = `Máximo ${LIMITS.organizer} caracteres`
+  if (f.city.trim().length > LIMITS.city) e.city = `Máximo ${LIMITS.city} caracteres`
 
   const target = parseAmount(f.targetText)
   if (target === null || target <= 0) e.targetAmount = 'El objetivo debe ser mayor a $0'

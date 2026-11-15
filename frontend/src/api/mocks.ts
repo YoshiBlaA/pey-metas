@@ -4,7 +4,9 @@
 import { ApiError, triggerUnauthorized } from './client'
 import type { AdminApi } from './adminApi'
 import type { PublicApi } from './publicApi'
+import { readStoredSession } from '../lib/authStorage'
 import type {
+  AdminContribution,
   ContributionStatus,
   GoalAdminResponse,
   GoalRequest,
@@ -31,9 +33,17 @@ const latency = () => sleep(250 + Math.random() * 350)
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString()
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+/** Aportación pagada del mock: lo público + la referencia que ve el admin. */
+type MockPaid = RecentContribution & { ref: string }
+
 interface MockGoal extends GoalAdminResponse {
-  contributions: RecentContribution[]
+  contributions: MockPaid[]
 }
+
+let refSeq = 4_810_000
+const nextRef = () => String(((refSeq++ * 7) % 8_999_999) + 1_000_000)
+const withRefs = (list: RecentContribution[]): MockPaid[] => list.map((c) => ({ ...c, ref: nextRef() }))
+const toRecent = ({ ref: _r, ...c }: MockPaid): RecentContribution => c
 
 function makeGoal(
   id: number,
@@ -43,12 +53,16 @@ function makeGoal(
   contributions: RecentContribution[],
   status: GoalStatus = 'OPEN',
   presetAmounts = [50, 100, 200, 500],
+  organizer: string | null = null,
+  city: string | null = null,
 ): MockGoal {
   const raisedAmount = round2(contributions.reduce((s, c) => s + c.amount, 0))
   return {
     id,
     title,
     description,
+    organizer,
+    city,
     targetAmount,
     raisedAmount,
     percentage: Math.min(100, Math.floor((raisedAmount / targetAmount) * 100)),
@@ -56,7 +70,7 @@ function makeGoal(
     presetAmounts,
     createdAt: minutesAgo(60 * 24 * 12),
     updatedAt: minutesAgo(30),
-    contributions,
+    contributions: withRefs(contributions),
   }
 }
 
@@ -74,7 +88,7 @@ function filler(count: number, total: number, startMinutes: number): RecentContr
     name: NAMES[i % NAMES.length],
     amount: scaled[i],
     message: MSGS[i % MSGS.length],
-    paidAt: minutesAgo(startMinutes + i * 47),
+    paidAt: minutesAgo(startMinutes + i * 160),
   }))
 }
 
@@ -91,6 +105,10 @@ const goals: MockGoal[] = [
       { name: 'Tío Beto', amount: 1000, message: 'Para que saques puro 10', paidAt: minutesAgo(180) },
       ...filler(83, 7550, 300),
     ],
+    'OPEN',
+    [50, 100, 200, 500],
+    'Familia Ramírez',
+    'Puebla, Pue.',
   ),
   makeGoal(
     2,
@@ -100,6 +118,8 @@ const goals: MockGoal[] = [
     filler(41, 4180, 20),
     'OPEN',
     [100, 250, 500],
+    'Vecinos de la colonia Centro',
+    'Tlaxcala, Tlax.',
   ),
   makeGoal(
     3,
@@ -108,6 +128,9 @@ const goals: MockGoal[] = [
     15000,
     filler(120, 15000, 600),
     'CLOSED',
+    [50, 100, 200, 500],
+    'Sociedad de Padres de Familia',
+    'Oaxaca, Oax.',
   ),
   makeGoal(
     4,
@@ -130,8 +153,36 @@ interface MockContribution {
   expiresAt: string
   status: ContributionStatus
   paidAt: string | null
+  /** Datos de ejemplo: nunca se pagan solos. */
+  seeded?: boolean
 }
 const contributions = new Map<string, MockContribution>()
+
+/** QR sin pagar de ejemplo (para el admin): pendientes vigentes y expirados. */
+function seedUnpaid(goalId: number, pending: number, expired: number) {
+  const now = Date.now()
+  const names = ['Carlos M.', 'Anónimo', 'Jorge R.', 'Paty', 'Anónimo', 'Luis F.']
+  for (let i = 0; i < pending + expired; i++) {
+    const isPending = i < pending
+    const createdAt = isPending ? now - (4 + i * 3) * 60_000 : now - (70 + i * 190) * 60_000
+    const numRef = nextRef()
+    contributions.set(numRef, {
+      numRef,
+      goalId,
+      amount: [100, 50, 200, 80][i % 4],
+      name: names[i % names.length],
+      message: i % 3 === 1 ? 'Échale ganas 💪' : null,
+      createdAt,
+      expiresAt: new Date(createdAt + QR_TTL_S * 1000).toISOString(),
+      status: isPending ? 'PENDING' : 'EXPIRED',
+      paidAt: null,
+      seeded: true,
+    })
+  }
+}
+seedUnpaid(1, 2, 9)
+seedUnpaid(2, 1, 3)
+seedUnpaid(4, 0, 2)
 
 // --- helpers ------------------------------------------------------------------------
 function findGoal(id: number): MockGoal {
@@ -161,11 +212,11 @@ function advance(c: MockContribution) {
   const now = Date.now()
   if (now >= Date.parse(c.expiresAt)) {
     c.status = 'EXPIRED'
-  } else if (!mockNeverPays() && now - c.createdAt >= PAY_AFTER_MS) {
+  } else if (!mockNeverPays() && !c.seeded && now - c.createdAt >= PAY_AFTER_MS) {
     c.status = 'PAID'
     c.paidAt = new Date().toISOString()
     const g = findGoal(c.goalId)
-    g.contributions.unshift({ name: c.name, amount: c.amount, message: c.message, paidAt: c.paidAt })
+    g.contributions.unshift({ name: c.name, amount: c.amount, message: c.message, paidAt: c.paidAt, ref: c.numRef })
     recalc(g)
   }
 }
@@ -177,6 +228,8 @@ function validateGoal(body: GoalRequest) {
   if (body.description && body.description.length > 2000)
     errors.push({ field: 'description', message: 'Máximo 2000 caracteres' })
   if (!(body.targetAmount > 0)) errors.push({ field: 'targetAmount', message: 'Debe ser mayor a 0' })
+  if ((body.organizer?.length ?? 0) > 100) errors.push({ field: 'organizer', message: 'Máximo 100 caracteres' })
+  if ((body.city?.length ?? 0) > 100) errors.push({ field: 'city', message: 'Máximo 100 caracteres' })
   if (body.presetAmounts.length > 12) errors.push({ field: 'presetAmounts', message: 'Máximo 12 montos' })
   if (body.presetAmounts.some((p) => !(p > 0)))
     errors.push({ field: 'presetAmounts', message: 'Cada monto debe ser mayor a 0' })
@@ -210,7 +263,7 @@ export const mockPublicApi: PublicApi = {
     return {
       ...toSummary(g),
       paidContributionsCount: g.contributions.length,
-      recentContributions: g.contributions.slice(0, Math.min(50, Math.max(1, recent))),
+      recentContributions: g.contributions.slice(0, Math.min(50, Math.max(1, recent))).map(toRecent),
     }
   },
 
@@ -263,12 +316,55 @@ export const mockPublicApi: PublicApi = {
   },
 }
 
+/** Todas las aportaciones como las ve el admin (pagadas + QR sin pagar), más nuevas primero. */
+function allAdminContributions(): AdminContribution[] {
+  contributions.forEach(advance)
+  let id = 1
+  const out: AdminContribution[] = []
+  for (const g of goals) {
+    for (const c of g.contributions) {
+      const created = Date.parse(c.paidAt) - 90_000
+      out.push({
+        id: id++,
+        numRef: c.ref,
+        goalId: g.id,
+        goalTitle: g.title,
+        name: c.name,
+        anonymous: c.name === 'Anónimo',
+        message: c.message,
+        amount: c.amount,
+        status: 'PAID',
+        createdAt: new Date(created).toISOString(),
+        expiresAt: new Date(created + QR_TTL_S * 1000).toISOString(),
+        paidAt: c.paidAt,
+      })
+    }
+  }
+  for (const c of contributions.values()) {
+    if (c.status === 'PAID') continue // ya está en g.contributions
+    out.push({
+      id: id++,
+      numRef: c.numRef,
+      goalId: c.goalId,
+      goalTitle: goals.find((x) => x.id === c.goalId)?.title ?? '',
+      name: c.name,
+      anonymous: c.name === 'Anónimo',
+      message: c.message,
+      amount: c.amount,
+      status: c.status,
+      createdAt: new Date(c.createdAt).toISOString(),
+      expiresAt: c.expiresAt,
+      paidAt: null,
+    })
+  }
+  return out.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+}
+
 // --- API admin simulada ---------------------------------------------------------------
 const MOCK_TOKEN = 'mock-token-pey'
 function checkToken() {
-  // Leemos el token que guardó AuthContext (misma clave de localStorage).
-  const raw = localStorage.getItem('pey.admin.session')
-  const token = raw ? (JSON.parse(raw) as { token?: string }).token : null
+  // Leemos el token que guardó AuthContext (localStorage o sessionStorage).
+  const token = readStoredSession()?.token ?? null
   if (token !== MOCK_TOKEN) {
     triggerUnauthorized()
     throw new ApiError(401, 'Tu sesión expiró. Inicia sesión de nuevo.')
@@ -302,7 +398,7 @@ export const mockAdminApi: AdminApi = {
     await latency()
     checkToken()
     validateGoal(body)
-    const g = makeGoal(nextGoalId++, body.title.trim(), body.description ?? '', body.targetAmount, [], 'OPEN', body.presetAmounts)
+    const g = makeGoal(nextGoalId++, body.title.trim(), body.description ?? '', body.targetAmount, [], 'OPEN', body.presetAmounts, body.organizer?.trim() || null, body.city?.trim() || null)
     g.createdAt = g.updatedAt = new Date().toISOString()
     goals.unshift(g)
     return toAdmin(g)
@@ -312,7 +408,14 @@ export const mockAdminApi: AdminApi = {
     checkToken()
     validateGoal(body)
     const g = findGoal(id)
-    Object.assign(g, { title: body.title.trim(), description: body.description, targetAmount: body.targetAmount, presetAmounts: body.presetAmounts })
+    Object.assign(g, {
+      title: body.title.trim(),
+      description: body.description,
+      targetAmount: body.targetAmount,
+      presetAmounts: body.presetAmounts,
+      organizer: body.organizer?.trim() || null,
+      city: body.city?.trim() || null,
+    })
     recalc(g)
     return toAdmin(g)
   },
@@ -323,6 +426,28 @@ export const mockAdminApi: AdminApi = {
     g.status = 'CLOSED'
     g.updatedAt = new Date().toISOString()
     return toAdmin(g)
+  },
+  async listContributions({ goalId, status, limit = 200 } = {}) {
+    await latency()
+    checkToken()
+    return allAdminContributions()
+      .filter((c) => (!goalId || c.goalId === goalId) && (!status || c.status === status))
+      .slice(0, Math.max(1, Math.min(1000, limit)))
+  },
+  async contributionStats(goalId) {
+    await latency()
+    checkToken()
+    const list = allAdminContributions().filter((c) => !goalId || c.goalId === goalId)
+    const weekAgo = Date.now() - 7 * 86_400_000
+    const count = (st: ContributionStatus) => list.filter((c) => c.status === st).length
+    return {
+      paid: count('PAID'),
+      pending: count('PENDING'),
+      expired: count('EXPIRED'),
+      paidAmountLast7Days: round2(
+        list.filter((c) => c.status === 'PAID' && Date.parse(c.paidAt!) >= weekAgo).reduce((sum, c) => sum + c.amount, 0),
+      ),
+    }
   },
   async reopenGoal(id) {
     await latency()

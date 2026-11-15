@@ -36,3 +36,16 @@ export function initials(name: string): string {
 const amountFmt = new Intl.NumberFormat('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 /** 12500 -> "12,500.00" (para mostrar un monto dentro de un input). */
 export const formatAmountInput = (n: number) => amountFmt.format(n)
+
+const dayMonth = new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short' })
+/** "2026-11-12T…" -> "12 nov" */
+export const formatDayMonth = (iso: string) => dayMonth.format(new Date(iso)).replace('.', '')
+
+/** "Organiza: Familia Ruiz · Puebla", "Puebla" o null si no hay ninguno. */
+export function organizerLine(organizer?: string | null, city?: string | null): string | null {
+  const o = organizer?.trim()
+  const c = city?.trim()
+  if (o && c) return `Organiza: ${o} · ${c}`
+  if (o) return `Organiza: ${o}`
+  return c || null
+}

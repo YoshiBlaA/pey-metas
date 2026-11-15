@@ -22,3 +22,9 @@ export function Chip({ kind, children }: { kind: ChipKind; children: React.React
     </span>
   )
 }
+
+/** Chip de estado de una aportación: Pagado / Pendiente / Expirado. */
+export function ContributionChip({ status }: { status: 'PAID' | 'PENDING' | 'EXPIRED' }) {
+  const [kind, text] = ({ PAID: ['paid', 'Pagado'], PENDING: ['pending', 'Pendiente'], EXPIRED: ['expired', 'Expirado'] } as const)[status]
+  return <Chip kind={kind}>{text}</Chip>
+}

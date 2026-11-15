@@ -1,6 +1,6 @@
 // 01 · Lista de metas (móvil 390×844).
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useIsDesktopWidth } from '../../hooks/useMediaQuery'
 import { useGoalCounts } from '../../hooks/useGoalCounts'
 import { publicApi, type GoalStatus } from '../../api'
@@ -109,6 +109,11 @@ export function GoalsListPage() {
           {results}
           {!loading && visible?.map((g) => <GoalCard key={g.id} goal={g} count={counts[g.id]} large padding={16} />)}
         </section>
+        <nav className="t-cap flex justify-center gap-2 pt-2 !text-ink-400" aria-label="Ayuda">
+          <Link to="/como-funciona" className="font-semibold text-brand-700">¿Cómo funciona?</Link>
+          <span aria-hidden>·</span>
+          <Link to="/preguntas-frecuentes" className="font-semibold text-brand-700">Preguntas frecuentes</Link>
+        </nav>
       </div>
     </>
   )

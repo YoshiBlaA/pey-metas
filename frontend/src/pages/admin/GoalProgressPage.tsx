@@ -1,11 +1,11 @@
-// 11 · Progreso de una meta (admin): datos de la meta + aportaciones pagadas recientes.
+// 11 · Progreso de una meta (admin): datos de la meta, conteos por estado y últimas aportaciones (cualquier estado).
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { adminApi, publicApi, type RecentContribution } from '../../api'
+import { adminApi } from '../../api'
 import { useAsync } from '../../hooks/useAsync'
 import { Money } from '../../components/Money'
 import { ProgressBar } from '../../components/ProgressBar'
-import { Chip, StatusBadge } from '../../components/StatusBadge'
+import { Chip, ContributionChip, StatusBadge } from '../../components/StatusBadge'
 import { Avatar } from '../../components/ContributionRow'
 import { Button, ButtonLink } from '../../components/Button'
 import { Spinner } from '../../components/Spinner'
@@ -15,6 +15,7 @@ import { formatDateTime, formatMoney } from '../../lib/format'
 import { useIsAdminDesktop } from '../../hooks/useMediaQuery'
 import { AppBar } from '../../components/Layouts'
 import { useGoalActions } from './useGoalActions'
+import { exportCsv } from '../../lib/contributionsCsv'
 
 const FIRST = 6
 
@@ -22,11 +23,15 @@ const shortDate = new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'sho
 
 export function GoalProgressPage() {
   const id = Number(useParams().id)
-  // Datos admin (fechas) + detalle público (conteo y últimas 50 aportaciones), en paralelo.
+  // Meta + conteos por estado + últimas 50 aportaciones (pagadas, pendientes y expiradas), en paralelo.
   const { data, setData, error, loading, reload } = useAsync(
     async () => {
-      const [admin, detail] = await Promise.all([adminApi.getGoal(id), publicApi.getGoal(id, 50)])
-      return { admin, detail }
+      const [admin, stats, list] = await Promise.all([
+        adminApi.getGoal(id),
+        adminApi.contributionStats(id),
+        adminApi.listContributions({ goalId: id, limit: 50 }),
+      ])
+      return { admin, stats, list }
     },
     [id],
   )
@@ -38,12 +43,12 @@ export function GoalProgressPage() {
   if (loading) return <>{bar()}<Spinner label="Cargando progreso…" /></>
   if (error || !data) return <>{bar()}<ErrorAlert error={error ?? 'Meta no encontrada'} onRetry={() => void reload()} /></>
 
-  const { admin: g, detail } = data
+  const { admin: g, stats, list } = data
   const remaining = Math.max(0, g.targetAmount - g.raisedAmount)
   const closed = g.status === 'CLOSED'
   const done = closed && g.percentage >= 100
-  const count = detail.paidContributionsCount
-  const rows = showAll ? detail.recentContributions : detail.recentContributions.slice(0, FIRST)
+  const count = stats.paid
+  const rows = showAll ? list : list.slice(0, FIRST)
   const presets = g.presetAmounts.map((p) => (Number.isInteger(p) ? `$${p.toLocaleString('es-MX')}` : formatMoney(p))).join(' · ')
 
   // ---- móvil (390×844) ----
@@ -74,29 +79,33 @@ export function GoalProgressPage() {
               <div className="rounded-xl bg-surface px-3 py-2.5"><div className="t-cap">Promedio</div><div className="t-strong">{count ? formatMoney(g.raisedAmount / count) : '—'}</div></div>
             </div>
           </section>
-          <div className="ui-kpi !gap-1 !rounded-[14px]" style={{ padding: 12 }}>
-            <div className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-brand-600" /><span className="t-cap">Aportaciones pagadas</span></div>
-            <span className="t-h2 text-brand-700">{count}</span>
+          <div className="grid grid-cols-3 gap-2.5">
+            {([['Pagadas', stats.paid, 'bg-brand-600', 'text-brand-700'], ['Pendientes', stats.pending, 'bg-pending', 'text-ink-900'], ['Expiradas', stats.expired, 'bg-expired', 'text-ink-900']] as const).map(([label, n, dot, color]) => (
+              <div key={label} className="ui-kpi !gap-1 !rounded-[14px]" style={{ padding: 12 }}>
+                <div className="flex items-center gap-1.5"><span className={`size-2 rounded-full ${dot}`} /><span className="t-cap">{label}</span></div>
+                <span className={`t-h2 ${color}`}>{n}</span>
+              </div>
+            ))}
           </div>
           <section className="ui-card">
             <div className="flex items-center justify-between">
               <h2 className="t-h3">Últimas aportaciones</h2>
-              {detail.recentContributions.length > FIRST && (
+              {list.length > FIRST && (
                 <button className="t-strong text-brand-700" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>{showAll ? 'Ver menos' : 'Ver todas'}</button>
               )}
             </div>
-            {rows.length === 0 ? <p className="t-body">Aún no hay aportaciones pagadas.</p> : (
+            {rows.length === 0 ? <p className="t-body">Aún no hay aportaciones.</p> : (
               <ul className="-my-3 divide-y divide-line">
                 {rows.map((c, i) => (
-                  <li key={`${c.paidAt}-${i}`} className="flex items-start gap-3 py-3">
+                  <li key={c.id ?? i} className="flex items-start gap-3 py-3">
                     <Avatar name={c.name} size={36} />
                     <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="flex min-w-0 items-center gap-2"><span className="t-strong truncate">{c.name}</span><Chip kind="paid">Pagado</Chip></div>
+                        <div className="flex min-w-0 items-center gap-2"><span className="t-strong truncate">{c.name}</span><ContributionChip status={c.status} /></div>
                         <Money amount={c.amount} className="t-strong" />
                       </div>
                       {c.message && <span className="t-cap">{c.message}</span>}
-                      <span className="t-cap !text-ink-400">{shortDate.format(new Date(c.paidAt))}</span>
+                      <span className="t-cap !text-ink-400">{shortDate.format(new Date(c.paidAt ?? c.createdAt))} · Ref. {c.numRef}</span>
                     </div>
                   </li>
                 ))}
@@ -108,7 +117,7 @@ export function GoalProgressPage() {
           </Button>
         </div>
         <div className="ui-bottombar !flex-row !gap-3">
-          <Button variant="secondary" onClick={() => exportCsv(g.title, detail.recentContributions)} disabled={!detail.recentContributions.length}>
+          <Button variant="secondary" onClick={() => exportCsv(g.title, list)} disabled={!list.length}>
             <DownloadIcon className="size-4" /> Exportar CSV
           </Button>
           <ButtonLink to={`/admin/metas/${g.id}/editar`} variant="dark"><PencilIcon className="size-4" /> Editar meta</ButtonLink>
@@ -133,7 +142,7 @@ export function GoalProgressPage() {
             <Button variant="secondary" size="sm" onClick={() => void reload(true)} aria-label="Actualizar datos">
               <RefreshIcon className="size-4" />
             </Button>
-            <Button variant="secondary" size="sm" onClick={() => exportCsv(g.title, detail.recentContributions)} disabled={!detail.recentContributions.length}>
+            <Button variant="secondary" size="sm" onClick={() => exportCsv(g.title, list)} disabled={!list.length}>
               <DownloadIcon className="size-4" /> Exportar CSV
             </Button>
             <Button variant={closed ? 'secondary' : 'danger'} size="sm" loading={busyId === g.id} onClick={() => void toggle(g)}>
@@ -168,10 +177,9 @@ export function GoalProgressPage() {
 
         <section className="ui-card xl:w-[340px]" style={{ padding: 24, gap: 14 }}>
           <h2 className="t-h3">Aportaciones</h2>
-          <div className="flex items-center justify-between">
-            <Chip kind="paid">Pagadas</Chip>
-            <span className="t-h3">{count}</span>
-          </div>
+          <div className="flex items-center justify-between"><Chip kind="paid">Pagadas</Chip><span className="t-h3">{stats.paid}</span></div>
+          <div className="flex items-center justify-between"><Chip kind="pending">Pendientes</Chip><span className="t-h3">{stats.pending}</span></div>
+          <div className="flex items-center justify-between"><Chip kind="expired">Expiradas</Chip><span className="t-h3">{stats.expired}</span></div>
           <div className="h-px bg-line" />
           <dl className="t-cap flex flex-col gap-1.5">
             <div className="flex justify-between"><dt>Creada</dt><dd>{formatDateTime(g.createdAt)}</dd></div>
@@ -184,28 +192,29 @@ export function GoalProgressPage() {
       <section className="ui-card !gap-0 overflow-hidden !p-0">
         <div className="flex items-center justify-between px-5 py-4">
           <h2 className="t-h3">Últimas aportaciones</h2>
-          {detail.recentContributions.length > FIRST && (
+          {list.length > FIRST && (
             <button className="t-strong text-brand-700" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
               {showAll ? 'Ver menos' : 'Ver todas'}
             </button>
           )}
         </div>
         {rows.length === 0 ? (
-          <p className="t-body border-t border-line p-8 text-center">Aún no hay aportaciones pagadas.</p>
+          <p className="t-body border-t border-line p-8 text-center">Aún no hay aportaciones.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="ui-table">
               <thead>
-                <tr><th scope="col">Nombre</th><th scope="col">Mensaje</th><th scope="col">Monto</th><th scope="col">Estado</th><th scope="col">Fecha</th></tr>
+                <tr><th scope="col">Nombre</th><th scope="col">Mensaje</th><th scope="col">Monto</th><th scope="col">Estado</th><th scope="col">Fecha</th><th scope="col">Referencia</th></tr>
               </thead>
               <tbody>
                 {rows.map((c, i) => (
-                  <tr key={`${c.paidAt}-${i}`}>
+                  <tr key={c.id ?? i}>
                     <td><div className="flex items-center gap-2.5"><Avatar name={c.name} size={32} /><span className="t-strong">{c.name}</span></div></td>
                     <td className="max-w-[260px] text-ink-700">{c.message || '—'}</td>
                     <td className="t-strong"><Money amount={c.amount} /></td>
-                    <td><Chip kind="paid">Pagado</Chip></td>
-                    <td className="text-ink-700">{shortDate.format(new Date(c.paidAt))}</td>
+                    <td><ContributionChip status={c.status} /></td>
+                    <td className="text-ink-700">{shortDate.format(new Date(c.paidAt ?? c.createdAt))}</td>
+                    <td className="t-cap !text-ink-400 tabular-nums">{c.numRef}</td>
                   </tr>
                 ))}
               </tbody>
@@ -224,19 +233,4 @@ function Tile({ label, value, small }: { label: string; value: string; small?: b
       <div className="t-h3" style={small ? { fontSize: 15 } : undefined}>{value}</div>
     </div>
   )
-}
-
-/** Descarga las aportaciones visibles como CSV (se genera en el navegador, con BOM para Excel). */
-function exportCsv(title: string, rows: RecentContribution[]) {
-  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`
-  const lines = [
-    ['Nombre', 'Mensaje', 'Monto', 'Pagada (UTC)'].join(','),
-    ...rows.map((c) => [esc(c.name), esc(c.message ?? ''), c.amount.toFixed(2), c.paidAt].join(',')),
-  ]
-  const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `aportaciones-${title.toLowerCase().replace(/[^a-z0-9]+/gi, '-').slice(0, 40)}.csv`
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
 }

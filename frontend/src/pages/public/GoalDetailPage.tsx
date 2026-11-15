@@ -13,7 +13,9 @@ import { ContributionRow } from '../../components/ContributionRow'
 import { Spinner } from '../../components/Spinner'
 import { ErrorAlert } from '../../components/ErrorAlert'
 import { Button, ButtonLink } from '../../components/Button'
-import { HeartIcon, ShareIcon, ShieldIcon, TrophyIcon } from '../../components/Icons'
+import { CheckIcon, HeartIcon, ShareIcon, ShieldIcon, TrophyIcon } from '../../components/Icons'
+import { formatDayMonth } from '../../lib/format'
+import { Organizer } from '../../components/Organizer'
 
 const FIRST_MOBILE = 5
 const FIRST_DESKTOP = 3
@@ -128,6 +130,34 @@ function AchievedNotice({ goal }: { goal: GoalPublicDetail }) {
   )
 }
 
+/** Tarjeta morada "¡Meta lograda!" del detalle móvil (Figma 03): aviso, monto, barra y datos de cierre. */
+function AchievedCardMobile({ goal }: { goal: GoalPublicDetail }) {
+  const n = goal.paidContributionsCount
+  // La meta se cierra con el último pago; el detalle público no trae otra fecha de cierre.
+  const closedAt = goal.recentContributions[0]?.paidAt
+  return (
+    <section className="flex flex-col gap-4 rounded-[20px] bg-achieved-50 p-[18px]" aria-label="Meta lograda" role="status" style={{ boxShadow: '0 4px 16px rgba(81,69,205,.10)' }}>
+      <div className="flex items-start gap-3">
+        <span className="ui-tile size-10 shrink-0 !rounded-full bg-achieved text-white"><CheckIcon className="size-5" /></span>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[19px] font-bold leading-[26px] text-achieved">¡Meta lograda!</span>
+          <span className="t-body">Gracias a {n} {n === 1 ? 'persona' : 'personas'}. Esta meta ya no recibe aportaciones.</span>
+        </div>
+      </div>
+      <div className="flex flex-col">
+        <Money amount={goal.raisedAmount} className="t-xl" />
+        <span className="t-body">recaudados de <Money amount={goal.targetAmount} /> MXN</span>
+      </div>
+      <ProgressBar value={goal.percentage} size="lg" achieved />
+      <dl className="flex justify-between">
+        <Stat value={`${goal.percentage}%`} label="completado" color="text-achieved" />
+        <Stat value={String(n)} label="aportaciones" />
+        {closedAt ? <Stat value={formatDayMonth(closedAt)} label="se cerró" /> : <span className="min-w-[88px]" />}
+      </dl>
+    </section>
+  )
+}
+
 // ---- móvil (390×844) ------------------------------------------------------------------
 /** Título del detalle en móvil: 26/34 si cabe en una línea; 22/30 si ocupa dos o más. */
 function MobileTitle({ title }: { title: string }) {
@@ -160,7 +190,7 @@ function MobileTitle({ title }: { title: string }) {
 function DetailMobile({ goal }: { goal: GoalPublicDetail }) {
   const achieved = goal.status === 'CLOSED'
   const remaining = Math.max(0, goal.targetAmount - goal.raisedAmount)
-  const { share, copied } = useShare(goal.title)
+  const { share } = useShare(goal.title)
   const shareBtn = (
     <button className="ui-iconbtn" onClick={share} aria-label="Compartir meta">
       <ShareIcon className="size-[18px]" />
@@ -171,16 +201,22 @@ function DetailMobile({ goal }: { goal: GoalPublicDetail }) {
       <AppBar title="Detalle de la meta" backTo="/" right={shareBtn} />
       <div className="ui-content" style={{ gap: 16 }}>
         <Banner goal={goal} height={achieved ? 120 : 128} icon={52} radius={14} />
-        <MobileTitle title={goal.title} />
-        {achieved && <AchievedNotice goal={goal} />}
-        <section className="ui-card" aria-label="Progreso">
-          <div className="flex flex-col">
-            <Money amount={goal.raisedAmount} className="t-xl" />
-            <span className="t-bodyL" style={{ fontSize: 15, lineHeight: '24px' }}>recaudados de <Money amount={goal.targetAmount} /> MXN</span>
-          </div>
-          <ProgressBar value={goal.percentage} size="lg" achieved={achieved} />
-          <Stats goal={goal} />
-        </section>
+        <div className="flex flex-col gap-1.5">
+          <MobileTitle title={goal.title} />
+          <Organizer goal={goal} />
+        </div>
+        {achieved ? (
+          <AchievedCardMobile goal={goal} />
+        ) : (
+          <section className="ui-card" aria-label="Progreso">
+            <div className="flex flex-col">
+              <Money amount={goal.raisedAmount} className="t-xl" />
+              <span className="t-bodyL" style={{ fontSize: 15, lineHeight: '24px' }}>recaudados de <Money amount={goal.targetAmount} /> MXN</span>
+            </div>
+            <ProgressBar value={goal.percentage} size="lg" achieved={achieved} />
+            <Stats goal={goal} />
+          </section>
+        )}
         {goal.description && (
           <section className="flex flex-col gap-1.5">
             <h3 className="t-h3">Sobre esta meta</h3>
@@ -193,7 +229,7 @@ function DetailMobile({ goal }: { goal: GoalPublicDetail }) {
       <div className="ui-bottombar">
         <div className="mx-auto flex w-full max-w-[440px] items-center gap-4">
           {achieved ? (
-            <Button variant="secondary" onClick={share}><ShareIcon className="size-[18px]" /> {copied ? 'Enlace copiado' : 'Compartir meta'}</Button>
+            <ButtonLink to="/" variant="secondary">Ver otras metas</ButtonLink>
           ) : (
             <>
               <div className="flex shrink-0 flex-col">
@@ -222,7 +258,10 @@ function DetailDesktop({ goal }: { goal: GoalPublicDetail }) {
       <div className="flex items-start gap-8">
         <div className="flex min-w-0 flex-1 flex-col gap-5">
           <Banner goal={goal} height={150} icon={56} />
-          <h1 className="text-[34px] font-extrabold leading-[42px]">{goal.title}</h1>
+          <div className="flex flex-col gap-1.5">
+            <h1 className="text-[34px] font-extrabold leading-[42px]">{goal.title}</h1>
+            <Organizer goal={goal} />
+          </div>
           {goal.description && (
             <section className="flex flex-col gap-1.5">
               <h2 className="t-h3">Sobre esta meta</h2>

@@ -19,6 +19,9 @@ export function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
+  // Sin marcar: la sesión vive en sessionStorage (se borra al cerrar el navegador). Marcado: localStorage.
+  const [remember, setRemember] = useState(false)
+  const [forgot, setForgot] = useState(false)
   const [error, setError] = useState<unknown>(null)
   const [loading, setLoading] = useState(false)
   // Cifras reales para el panel decorativo (endpoint público, no requiere login).
@@ -36,7 +39,7 @@ export function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      await login(username.trim(), password)
+      await login(username.trim(), password, remember)
       navigate(from, { replace: true })
     } catch (err) {
       setError(err)
@@ -50,7 +53,7 @@ export function LoginPage() {
   const fields = (
     <>
       <TextField
-        label="Usuario"
+        label="Correo o usuario"
         prefix={<MailIcon className="size-[18px]" />}
         value={username}
         onChange={(e) => setUsername(e.target.value)}
@@ -70,6 +73,20 @@ export function LoginPage() {
         onChange={(e) => setPassword(e.target.value)}
         autoComplete="current-password"
       />
+      <div className="-mt-1 flex items-center justify-between gap-3">
+        <label className="flex cursor-pointer items-center gap-2.5 text-[14px] text-ink-700">
+          <input type="checkbox" className="ui-check" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+          Recordarme
+        </label>
+        <button type="button" className="text-[14px] font-semibold text-brand-700 hover:underline" onClick={() => setForgot((v) => !v)} aria-expanded={forgot}>
+          ¿Olvidaste tu contraseña?
+        </button>
+      </div>
+      {forgot && (
+        <p className="t-body rounded-xl bg-brand-50 px-3.5 py-3 !text-brand-700" role="status">
+          Por seguridad la contraseña no se restablece desde aquí. Pide al administrador del sistema que te asigne una nueva.
+        </p>
+      )}
       <ErrorAlert error={error} />
       <Button type="submit" loading={loading}>Entrar</Button>
     </>

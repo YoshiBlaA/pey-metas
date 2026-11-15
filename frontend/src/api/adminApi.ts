@@ -1,6 +1,16 @@
 // Endpoints de administración. Todos (menos login) mandan el token Bearer.
 import { request } from './client'
-import type { AdminMe, GoalAdminResponse, GoalRequest, GoalStatus, LoginRequest, LoginResponse } from './types'
+import type {
+  AdminContribution,
+  AdminMe,
+  ContributionStats,
+  ContributionStatus,
+  GoalAdminResponse,
+  GoalRequest,
+  GoalStatus,
+  LoginRequest,
+  LoginResponse,
+} from './types'
 
 export const realAdminApi = {
   login: (body: LoginRequest) => request<LoginResponse>('/api/auth/login', { method: 'POST', body }),
@@ -25,6 +35,14 @@ export const realAdminApi = {
   /** El backend responde 422 si la meta ya alcanzó su objetivo. */
   reopenGoal: (id: number) =>
     request<GoalAdminResponse>(`/api/admin/goals/${id}/reopen`, { method: 'POST', auth: true }),
+
+  /** Aportaciones en cualquier estado, más nuevas primero. */
+  listContributions: (opts: { goalId?: number; status?: ContributionStatus; limit?: number } = {}) =>
+    request<AdminContribution[]>('/api/admin/contributions', { auth: true, query: opts }),
+
+  /** Pagadas / pendientes / expiradas y lo pagado en 7 días (sin goalId = todas las metas). */
+  contributionStats: (goalId?: number) =>
+    request<ContributionStats>('/api/admin/contributions/stats', { auth: true, query: { goalId } }),
 }
 
 export type AdminApi = typeof realAdminApi

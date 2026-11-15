@@ -25,6 +25,8 @@ export function AdminGoalsPage() {
   // Traemos todas y filtramos en el navegador (así los contadores de los chips son exactos).
   const { data: goals, error, loading, reload } = useAsync(() => adminApi.listGoals(), [])
   const counts = useGoalCounts(goals)
+  // Conteos de aportaciones (pagadas, pendientes) y lo pagado en 7 días; si falla, los KPIs usan lo que haya.
+  const { data: stats } = useAsync(() => adminApi.contributionStats().catch(() => null), [])
 
   const all = goals ?? []
   const open = all.filter((g) => g.status === 'OPEN')
@@ -32,12 +34,13 @@ export function AdminGoalsPage() {
   const achieved = closed.filter((g) => g.percentage >= 100)
   const raised = all.reduce((s, g) => s + g.raisedAmount, 0)
   const countValues = Object.values(counts)
-  const paid = countValues.length === all.length && countValues.every((c) => c !== null) ? countValues.reduce((s, c) => s + (c ?? 0), 0) : null
+  const summed = countValues.length === all.length && countValues.every((c) => c !== null) ? countValues.reduce((s, c) => s + (c ?? 0), 0) : null
+  const paid = stats ? stats.paid : summed
 
-  const q = query.trim().toLowerCase()
-  const visible = (filter === 'ALL' ? all : filter === 'OPEN' ? open : closed).filter((g) => !q || g.title.toLowerCase().includes(q))
   const desktop = useIsAdminDesktop()
   const { session } = useAuth()
+  const q = query.trim().toLowerCase()
+  const visible = (filter === 'ALL' ? all : filter === 'OPEN' ? open : closed).filter((g) => !q || g.title.toLowerCase().includes(q))
 
   const chips = (
     <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por estado">
@@ -47,8 +50,8 @@ export function AdminGoalsPage() {
     </div>
   )
   const kpis = {
-    raised: { label: 'Recaudado total', value: goals ? formatMoney(raised) : '—', color: 'text-brand-700', note: `en ${all.length} metas` },
-    paid: { label: 'Aportaciones pagadas', value: paid !== null ? String(paid) : '—', color: 'text-ink-900', note: 'en todas las metas' },
+    raised: { label: 'Recaudado total', value: goals ? formatMoney(raised) : '—', color: 'text-brand-700', note: stats ? `+${formatMoney(stats.paidAmountLast7Days)} ${desktop ? 'esta semana' : 'en 7 días'}` : `en ${all.length} metas` },
+    paid: { label: 'Aportaciones pagadas', value: paid !== null ? String(paid) : '—', color: 'text-ink-900', note: stats ? `${stats.pending} ${stats.pending === 1 ? 'pendiente' : 'pendientes'} de pago` : 'en todas las metas' },
     open: { label: 'Metas abiertas', value: goals ? String(open.length) : '—', color: 'text-ink-900', note: `de ${all.length} metas` },
     done: {
       label: 'Metas logradas',

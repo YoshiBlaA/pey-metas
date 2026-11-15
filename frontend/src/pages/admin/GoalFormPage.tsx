@@ -15,7 +15,7 @@ import { PlusIcon, ShieldIcon, XIcon } from '../../components/Icons'
 import { formatAmountInput, formatMoney } from '../../lib/format'
 import { LIMITS, hasMax2Decimals, isEmpty, parseAmount, validateGoal, type GoalForm } from '../../lib/validation'
 
-const EMPTY: GoalForm = { title: '', description: '', targetText: '', presetTexts: ['50', '100', '200', '500'] }
+const EMPTY: GoalForm = { title: '', description: '', targetText: '', presetTexts: ['50', '100', '200', '500'], organizer: '', city: '' }
 const short = (n: number) => (Number.isInteger(n) ? `$${n.toLocaleString('es-MX')}` : formatMoney(n))
 
 export function GoalFormPage() {
@@ -48,7 +48,7 @@ export function GoalFormPage() {
       .getGoal(editingId)
       .then((g) => {
         if (!alive) return
-        setForm({ title: g.title, description: g.description ?? '', targetText: formatAmountInput(g.targetAmount), presetTexts: g.presetAmounts.map(String) })
+        setForm({ title: g.title, description: g.description ?? '', targetText: formatAmountInput(g.targetAmount), presetTexts: g.presetAmounts.map(String), organizer: g.organizer ?? '', city: g.city ?? '' })
         setCurrent({ status: g.status, percentage: g.percentage, raisedAmount: g.raisedAmount })
       })
       .catch((e) => alive && setLoadError(e))
@@ -92,6 +92,8 @@ export function GoalFormPage() {
       targetAmount: parseAmount(form.targetText)!,
       // Ignoramos casillas vacías, quitamos repetidos y ordenamos de menor a mayor.
       presetAmounts: [...new Set(form.presetTexts.filter((t) => t.trim()).map((t) => parseAmount(t)!))].sort((a, b) => a - b),
+      organizer: form.organizer.trim() || null,
+      city: form.city.trim() || null,
     }
     setSaving(true)
     try {
@@ -167,6 +169,10 @@ export function GoalFormPage() {
   const fields = (
     <>
       <TextField label="Título" value={form.title} maxLength={LIMITS.title} showCount={false} onChange={(e) => set('title', e.target.value, 'title')} error={errors.title} placeholder="Ej. Rescate animal Huellitas" />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <TextField label="Organiza (opcional)" value={form.organizer} maxLength={LIMITS.organizer} showCount={false} onChange={(e) => set('organizer', e.target.value, 'organizer')} error={errors.organizer} placeholder="Ej. Familia Ramírez" />
+        <TextField label="Ciudad (opcional)" value={form.city} maxLength={LIMITS.city} showCount={false} onChange={(e) => set('city', e.target.value, 'city')} error={errors.city} placeholder="Ej. Puebla, Pue." />
+      </div>
       <TextArea label="Descripción" value={form.description} maxLength={LIMITS.description} onChange={(e) => set('description', e.target.value, 'description')} error={errors.description} placeholder="Cuenta para qué es la meta y a quién ayuda." className="!h-[120px] !text-[15px] !leading-[23px]" />
     </>
   )

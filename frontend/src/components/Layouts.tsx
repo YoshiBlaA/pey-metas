@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from
 import { USE_MOCKS } from '../api'
 import { useAuth } from '../auth/AuthContext'
 import { initials } from '../lib/format'
-import { BackIcon, EyeIcon, GridIcon, LogoutIcon, PlusIcon, SearchIcon, ShieldIcon, UserIcon } from './Icons'
+import { BackIcon, EyeIcon, GearIcon, GridIcon, ListIcon, LogoutIcon, SearchIcon, ShieldIcon, UserIcon } from './Icons'
 import { useIsAdminDesktop, useIsDesktopWidth } from '../hooks/useMediaQuery'
 
 /** Logo de la marca (tile 32px radio 10 + "Pey Metas" 19px). */
@@ -61,7 +61,7 @@ export function PublicLayout() {
   )
 }
 
-/** Nav pública de escritorio (72px): logo, enlace a Metas y buscador (lleva a /?q=…). */
+/** Nav pública de escritorio (72px): logo, enlaces (Metas, ¿Cómo funciona?, Preguntas frecuentes) y buscador (lleva a /?q=…). */
 function TopNav() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -73,9 +73,11 @@ function TopNav() {
         <div className="flex items-center gap-12">
           <Logo />
           <nav aria-label="Principal" className="flex items-center gap-7">
-            <NavLink to="/" end className={({ isActive }) => `text-[14px] font-semibold ${isActive ? 'text-brand-700' : 'text-ink-700 hover:text-ink-900'}`}>
-              Metas
-            </NavLink>
+            {([['/', 'Metas'], ['/como-funciona', '¿Cómo funciona?'], ['/preguntas-frecuentes', 'Preguntas frecuentes']] as const).map(([to, label]) => (
+              <NavLink key={to} to={to} end className={({ isActive }) => `text-[14px] font-semibold ${isActive ? 'text-brand-700' : 'text-ink-700 hover:text-ink-900'}`}>
+                {label}
+              </NavLink>
+            ))}
           </nav>
         </div>
         <form
@@ -114,8 +116,7 @@ export function AppBar({ title, backTo, right }: { title: string; backTo?: strin
 
 /**
  * Layout de administración. Escritorio (>= 1024px): sidebar de 248px.
- * Menos de 1024px: tab bar abajo (solo pestañas con funciones reales: Metas, Nueva meta, Cuenta).
- * El diseño también trae "Aportaciones" y "Configuración/Ajustes", pero el backend no tiene esas funciones.
+ * Menos de 1024px: tab bar abajo (Metas, Aportaciones, Ajustes y Cuenta), como en el diseño móvil.
  */
 export function AdminLayout() {
   const desktop = useIsAdminDesktop()
@@ -131,7 +132,7 @@ export function AdminLayout() {
       </div>
     )
   // En móvil el tab bar solo aparece en el panel; crear/editar y progreso tienen su barra de acciones.
-  const showTabs = location.pathname === '/admin' || location.pathname === '/admin/'
+  const showTabs = ['/admin', '/admin/aportaciones', '/admin/configuracion'].includes(location.pathname.replace(/\/$/, ''))
   return (
     <div className="min-h-dvh">
       <MockBanner />
@@ -159,18 +160,18 @@ function Sidebar() {
     <aside className="ui-side h-full">
       <div className="px-2"><Logo to="/admin" /></div>
       <nav className="ui-nav" aria-label="Administración">
-        <NavLink to="/admin" end className={({ isActive }) => (isActive || /^\/admin\/metas\/\d+/.test(location.pathname) ? 'active' : '')}>
+        <NavLink to="/admin" end className={({ isActive }) => (isActive || /^\/admin\/metas\//.test(location.pathname) ? 'active' : '')}>
           <GridIcon className="size-[18px]" />
           Metas
         </NavLink>
-        <NavLink to="/admin/metas/nueva">
-          <PlusIcon className="size-[18px]" />
-          Nueva meta
+        <NavLink to="/admin/aportaciones">
+          <ListIcon className="size-[18px]" />
+          Aportaciones
         </NavLink>
-        <a href="/" target="_blank" rel="noreferrer">
-          <EyeIcon className="size-[18px]" />
-          Ver sitio público
-        </a>
+        <NavLink to="/admin/configuracion">
+          <GearIcon className="size-[18px]" />
+          Configuración
+        </NavLink>
       </nav>
       <div className="mt-auto flex flex-col gap-3 rounded-[14px] border border-line p-3">
         <div className="flex items-center gap-2.5">
@@ -221,8 +222,11 @@ function TabBar() {
         <NavLink to="/admin" end className={({ isActive }) => tab(isActive && !account)}>
           <GridIcon className="size-[22px]" /> Metas
         </NavLink>
-        <NavLink to="/admin/metas/nueva" className={({ isActive }) => tab(isActive && !account)}>
-          <PlusIcon className="size-[22px]" /> Nueva meta
+        <NavLink to="/admin/aportaciones" className={({ isActive }) => tab(isActive && !account)}>
+          <ListIcon className="size-[22px]" /> Aportaciones
+        </NavLink>
+        <NavLink to="/admin/configuracion" className={({ isActive }) => tab(isActive && !account)}>
+          <GearIcon className="size-[22px]" /> Ajustes
         </NavLink>
         <button className={tab(account)} onClick={() => setAccount((v) => !v)} aria-expanded={account}>
           <UserIcon className="size-[22px]" /> Cuenta
