@@ -16,21 +16,21 @@ function InfoShell({ title, intro, children }: { title: string; intro: string; c
         <div className="ui-content" style={{ gap: 16 }}>
           <p className="t-body">{intro}</p>
           {children}
-          <ButtonLink to="/">Ver metas</ButtonLink>
+          <ButtonLink to="/metas">Ver metas</ButtonLink>
         </div>
       </div>
     )
   return (
     <div className="mx-auto flex w-full max-w-[880px] flex-col gap-6 pt-6">
       <nav className="t-crumb" aria-label="Ruta">
-        <Link to="/" className="hover:text-ink-700">Metas</Link><span className="mx-1.5">/</span><span>{title}</span>
+        <Link to="/metas" className="hover:text-ink-700">Metas</Link><span className="mx-1.5">/</span><span>{title}</span>
       </nav>
       <div className="flex flex-col gap-2">
         <h1 className="text-[40px] font-extrabold leading-[48px]">{title}</h1>
         <p className="t-bodyL">{intro}</p>
       </div>
       {children}
-      <ButtonLink to="/" className="!w-60">Ver metas</ButtonLink>
+      <ButtonLink to="/metas" className="!w-60">Ver metas</ButtonLink>
     </div>
   )
 }

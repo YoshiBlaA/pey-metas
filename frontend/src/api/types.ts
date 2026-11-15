@@ -98,9 +98,21 @@ export interface LoginResponse {
   expiresIn: number
 }
 
+/** POST /api/auth/register (responde igual que el login, con 201) */
+export interface RegisterRequest {
+  /** Nombre de la persona u organización. */
+  name: string
+  /** Correo: es el usuario para iniciar sesión. */
+  email: string
+  password: string
+}
+
 /** GET /api/admin/me */
 export interface AdminMe {
+  id: number
   username: string
+  /** Nombre de la persona u organización (null en cuentas viejas). */
+  name: string | null
   roles: string[]
 }
 

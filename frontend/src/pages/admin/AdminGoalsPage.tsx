@@ -67,8 +67,8 @@ export function AdminGoalsPage() {
       <>
         <header className="flex h-[60px] items-center justify-between px-5">
           <Logo to="/admin" />
-          <span className="ui-tile size-9 !rounded-full bg-achieved-50 text-[13px] font-bold text-achieved" aria-label={session?.username}>
-            {initials(session?.username || '?')}
+          <span className="ui-tile size-9 !rounded-full bg-achieved-50 text-[13px] font-bold text-achieved" aria-label={session?.name || session?.username}>
+            {initials(session?.name || session?.username || '?')}
           </span>
         </header>
         <div className="ui-content !pt-1" style={{ gap: 14 }}>

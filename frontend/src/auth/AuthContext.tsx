@@ -10,6 +10,8 @@ interface AuthContextValue {
   isAuthenticated: boolean
   /** remember = true guarda la sesión en localStorage; false, en sessionStorage. */
   login: (username: string, password: string, remember?: boolean) => Promise<void>
+  /** Crea la cuenta y deja la sesión iniciada. */
+  register: (name: string, email: string, password: string, remember?: boolean) => Promise<void>
   logout: () => void
 }
 
@@ -39,21 +41,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.clearTimeout(id)
   }, [session, logout])
 
-  const login = useCallback(async (username: string, password: string, remember = false) => {
-    const res = await adminApi.login({ username, password })
-    const s: Session = { token: res.token, username, expiresAt: Date.now() + res.expiresIn * 1000 }
+  /** Guarda el token y completa usuario y nombre con /api/admin/me (que además valida el token). */
+  const start = useCallback(async (token: string, expiresIn: number, username: string, remember: boolean) => {
+    const s: Session = { token, username, expiresAt: Date.now() + expiresIn * 1000 }
     writeStoredSession(s, remember)
     setSession(s)
-    // Validamos el token con /api/admin/me y usamos el nombre que devuelve el backend.
     const me = await adminApi.me()
-    const withName = { ...s, username: me.username }
+    const withName = { ...s, username: me.username, name: me.name }
     writeStoredSession(withName, remember)
     setSession(withName)
   }, [])
 
+  const login = useCallback(async (username: string, password: string, remember = false) => {
+    const res = await adminApi.login({ username, password })
+    await start(res.token, res.expiresIn, username, remember)
+  }, [start])
+
+  const register = useCallback(async (name: string, email: string, password: string, remember = false) => {
+    const res = await adminApi.register({ name, email, password })
+    await start(res.token, res.expiresIn, email, remember)
+  }, [start])
+
   const value = useMemo(
-    () => ({ session, isAuthenticated: session !== null, login, logout }),
-    [session, login, logout],
+    () => ({ session, isAuthenticated: session !== null, login, register, logout }),
+    [session, login, register, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

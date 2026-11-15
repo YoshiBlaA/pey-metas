@@ -5,6 +5,8 @@ export const SESSION_KEY = 'pey.admin.session'
 export interface StoredSession {
   token: string
   username: string
+  /** Nombre de la persona u organización, si la cuenta lo tiene. */
+  name?: string | null
   /** Momento (ms) en que vence el token, calculado con expiresIn. */
   expiresAt: number
 }

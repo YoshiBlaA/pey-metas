@@ -10,10 +10,14 @@ import type {
   GoalStatus,
   LoginRequest,
   LoginResponse,
+  RegisterRequest,
 } from './types'
 
 export const realAdminApi = {
   login: (body: LoginRequest) => request<LoginResponse>('/api/auth/login', { method: 'POST', body }),
+
+  /** Crea una cuenta (cada admin maneja solo sus metas); regresa el token como el login. */
+  register: (body: RegisterRequest) => request<LoginResponse>('/api/auth/register', { method: 'POST', body }),
 
   /** Sirve para validar que el token guardado sigue vivo. */
   me: () => request<AdminMe>('/api/admin/me', { auth: true }),

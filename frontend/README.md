@@ -42,10 +42,10 @@ Después de cambiar `.env` reinicia `npm run dev`.
 
 Con `VITE_USE_MOCKS=true` verás un aviso amarillo de "Modo demo" y:
 
-- Hay 4 metas de ejemplo en MXN (una ya lograda).
+- Hay 5 metas de ejemplo en MXN (una ya lograda); 4 son de la cuenta `admin` y 1 de otra cuenta.
 - Al aportar se genera un QR **de demostración** con la forma de un QR de CoDi (`TYP:20`) pero marcado `DEMO-NO-PAGABLE`: la app de tu banco no lo va a aceptar, y la pantalla lo avisa. **A los ~15 s pasa a PAID** y la barra de la meta se actualiza.
 - Para ver la pantalla "QR expirado" en demo: en la consola del navegador `localStorage.setItem('pey.mock.sinPago','1')` (las aportaciones ya no se pagan y vencen a los 20 min). Quítalo con `localStorage.removeItem('pey.mock.sinPago')`.
-- Admin: usuario **`admin`**, contraseña **`admin123`**.
+- Admin: usuario **`admin`**, contraseña **`admin123`**. Otra cuenta: **`huellitas@demo.mx`** / **`demo1234`**. También puedes crear cuentas en `/admin/registro`; cada cuenta ve y maneja solo sus metas.
 - Las validaciones y errores imitan al backend (400 con errores por campo, 404, 409 meta cerrada, 422 al reabrir una meta que ya alcanzó su objetivo, 401).
 - Los datos viven en memoria: al recargar la página se reinician.
 
@@ -89,14 +89,18 @@ Con `VITE_USE_MOCKS=true` verás un aviso amarillo de "Modo demo" y:
 
 | Ruta | Pantalla (Figma) |
 | --- | --- |
-| `/` | 01 Lista de metas |
+| `/` | Landing (sin diseño en Figma) |
+| `/metas` | 01 Lista de metas (las de todas las cuentas) |
+| `/como-funciona`, `/preguntas-frecuentes` | Informativas (sin diseño en Figma) |
 | `/metas/:id` | 02 Detalle abierta / 03 Detalle lograda |
 | `/metas/:id/aportar` | 04 Aportar |
 | `/pago/:numRef` | 05 QR pendiente / 06 Pagado / 07 Expirado |
 | `/admin/login` | 08 Login |
+| `/admin/registro` | Crear cuenta (mismo diseño del login) |
 | `/admin` | 09 Panel |
 | `/admin/metas/nueva`, `/admin/metas/:id/editar` | 10 Crear / editar |
 | `/admin/metas/:id` | 11 Progreso |
+| `/admin/aportaciones`, `/admin/configuracion` | Aportaciones y Configuración (estilo del panel) |
 
 ## Estructura de carpetas
 

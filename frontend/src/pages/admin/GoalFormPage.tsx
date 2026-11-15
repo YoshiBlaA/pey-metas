@@ -4,6 +4,7 @@ import { useEffect, useId, useState, type FormEvent, type KeyboardEvent } from '
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiError, adminApi, type GoalStatus } from '../../api'
 import { useIsAdminDesktop } from '../../hooks/useMediaQuery'
+import { useAuth } from '../../auth/AuthContext'
 import { AppBar } from '../../components/Layouts'
 import { TextArea, TextField } from '../../components/Field'
 import { Button, ButtonLink } from '../../components/Button'
@@ -24,6 +25,7 @@ export function GoalFormPage() {
   const navigate = useNavigate()
   const desktop = useIsAdminDesktop()
   const formId = useId()
+  const { session } = useAuth()
 
   const [form, setForm] = useState<GoalForm>(EMPTY)
   const [current, setCurrent] = useState<{ status: GoalStatus; percentage: number; raisedAmount: number } | null>(null)
@@ -37,7 +39,8 @@ export function GoalFormPage() {
   // En modo edición cargamos la meta y llenamos el formulario.
   useEffect(() => {
     if (editingId === null) {
-      setForm(EMPTY)
+      // En una meta nueva, "Organiza" empieza con el nombre de la cuenta.
+      setForm({ ...EMPTY, organizer: session?.name ?? '' })
       setCurrent(null)
       setLoading(false)
       return

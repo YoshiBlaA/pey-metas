@@ -1,5 +1,5 @@
 // Mapa de rutas de la app. Público (móvil) y admin (escritorio, protegido).
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { AdminLayout, PublicLayout } from './components/Layouts'
 import { RequireAuth } from './auth/RequireAuth'
 import { GoalsListPage } from './pages/public/GoalsListPage'
@@ -9,7 +9,8 @@ import { PaymentPage } from './pages/public/PaymentPage'
 import { FaqPage, HowItWorksPage } from './pages/public/InfoPages'
 import { ContributionsPage } from './pages/admin/ContributionsPage'
 import { SettingsPage } from './pages/admin/SettingsPage'
-import { LoginPage } from './pages/admin/LoginPage'
+import { LoginPage, RegisterPage } from './pages/admin/LoginPage'
+import { LandingPage } from './pages/public/LandingPage'
 import { AdminGoalsPage } from './pages/admin/AdminGoalsPage'
 import { GoalFormPage } from './pages/admin/GoalFormPage'
 import { GoalProgressPage } from './pages/admin/GoalProgressPage'
@@ -19,7 +20,8 @@ export function App() {
   return (
     <Routes>
       <Route element={<PublicLayout />}>
-        <Route index element={<GoalsListPage />} />
+        <Route index element={<LandingPage />} />
+        <Route path="metas" element={<GoalsListPage />} />
         <Route path="metas/:id" element={<GoalDetailPage />} />
         <Route path="metas/:id/aportar" element={<ContributePage />} />
         <Route path="como-funciona" element={<HowItWorksPage />} />
@@ -31,6 +33,9 @@ export function App() {
       </Route>
 
       <Route path="admin/login" element={<LoginPage />} />
+      <Route path="admin/registro" element={<RegisterPage />} />
+      <Route path="registro" element={<Navigate to="/admin/registro" replace />} />
+      <Route path="login" element={<Navigate to="/admin/login" replace />} />
       <Route
         path="admin"
         element={

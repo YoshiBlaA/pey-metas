@@ -95,7 +95,7 @@ export function ContributePage() {
         {bar}
         <div className={desktop ? 'mx-auto flex w-full max-w-[640px] flex-col gap-4 pt-8' : 'ui-content'}>
           <p className="t-strong rounded-2xl bg-achieved-50 p-5 text-achieved">Esta meta ya se logró y no recibe más aportaciones. ¡Gracias!</p>
-          <ButtonLink to="/" variant="secondary">Ver otras metas</ButtonLink>
+          <ButtonLink to="/metas" variant="secondary">Ver otras metas</ButtonLink>
         </div>
       </>
     )
@@ -169,7 +169,7 @@ export function ContributePage() {
     return (
       <div className="flex flex-col gap-5 pt-6">
         <nav className="t-crumb" aria-label="Ruta">
-          <Link to="/" className="hover:text-ink-700">Metas</Link><span className="mx-1.5">/</span>
+          <Link to="/metas" className="hover:text-ink-700">Metas</Link><span className="mx-1.5">/</span>
           <Link to={`/metas/${id}`} className="hover:text-ink-700">{goal.title}</Link><span className="mx-1.5">/</span>
           <span>Aportar</span>
         </nav>

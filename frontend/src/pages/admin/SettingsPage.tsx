@@ -18,14 +18,15 @@ export function SettingsPage() {
   const { session, logout } = useAuth()
   const navigate = useNavigate()
   const { data: me, error } = useAsync(() => adminApi.me(), [])
-  const name = me?.username ?? session?.username ?? ''
+  const name = me?.name || session?.name || me?.username || session?.username || ''
   const onLogout = () => {
     logout()
     navigate('/admin/login')
   }
 
   const rows: [string, string][] = [
-    ['Usuario', name || '—'],
+    ['Nombre', me?.name || session?.name || '—'],
+    ['Correo o usuario', me?.username ?? session?.username ?? '—'],
     ['Rol', me ? me.roles.map((r) => ROLE_TEXT[r] ?? r).join(', ') : '—'],
     ['Sesión vence', session ? formatDateTime(new Date(session.expiresAt).toISOString()) : '—'],
     ['Recordar sesión', isRemembered() ? 'Sí, en este navegador' : 'No, se cierra al cerrar el navegador'],
@@ -87,7 +88,7 @@ export function SettingsPage() {
     <>
       <div className="flex flex-col gap-1">
         <h1 className="t-h1">Configuración</h1>
-        <p className="t-body">Tu perfil de administrador y los datos de tu sesión.</p>
+        <p className="t-body">Tu cuenta y los datos de tu sesión. Solo tú ves y manejas tus metas.</p>
       </div>
       <div className="flex max-w-[720px] flex-col gap-5">{content}</div>
     </>

@@ -16,7 +16,17 @@ import type {
 
 const PAY_AFTER_MS = 15_000
 const QR_TTL_S = 1200 // vigencia real del QR en Pey: 20 minutos
-const MOCK_USER = { username: 'admin', password: 'admin123' }
+/** Cuentas de demo: cada una ve y maneja solo sus metas. Las nuevas se agregan con "Crear cuenta". */
+interface MockUser {
+  id: number
+  username: string
+  name: string | null
+  password: string
+}
+const users: MockUser[] = [
+  { id: 1, username: 'admin', name: 'Pey Metas (demo)', password: 'admin123' },
+  { id: 2, username: 'huellitas@demo.mx', name: 'Rescate Huellitas', password: 'demo1234' },
+]
 
 // Solo para probar la pantalla "QR expirado" en modo demo: con
 // localStorage['pey.mock.sinPago'] = '1' las aportaciones nunca se pagan y vencen.
@@ -37,6 +47,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 type MockPaid = RecentContribution & { ref: string }
 
 interface MockGoal extends GoalAdminResponse {
+  /** Cuenta dueña de la meta (no viaja en las respuestas, igual que en el backend). */
+  ownerId: number
   contributions: MockPaid[]
 }
 
@@ -70,6 +82,7 @@ function makeGoal(
     presetAmounts,
     createdAt: minutesAgo(60 * 24 * 12),
     updatedAt: minutesAgo(30),
+    ownerId: 1,
     contributions: withRefs(contributions),
   }
 }
@@ -92,7 +105,7 @@ function filler(count: number, total: number, startMinutes: number): RecentContr
   }))
 }
 
-let nextGoalId = 5
+let nextGoalId = 6
 const goals: MockGoal[] = [
   makeGoal(
     1,
@@ -141,6 +154,20 @@ const goals: MockGoal[] = [
     'OPEN',
     [20, 50, 100, 200, 300],
   ),
+  {
+    ...makeGoal(
+      5,
+      'Rescate animal Huellitas',
+      'Vacunas, esterilizaciones y alimento para 40 perritos del refugio.',
+      10000,
+      filler(19, 2350, 45),
+      'OPEN',
+      [50, 100, 200],
+      'Rescate Huellitas',
+      'Cholula, Pue.',
+    ),
+    ownerId: 2,
+  },
 ]
 
 interface MockContribution {
@@ -197,11 +224,11 @@ function recalc(g: MockGoal) {
 }
 function toSummary(g: MockGoal) {
   // Igual que el backend real: el resumen NO trae paidContributionsCount.
-  const { contributions: _c, createdAt: _a, updatedAt: _u, ...summary } = g
+  const { contributions: _c, createdAt: _a, updatedAt: _u, ownerId: _o, ...summary } = g
   return { ...summary, presetAmounts: [...g.presetAmounts] }
 }
 function toAdmin(g: MockGoal): GoalAdminResponse {
-  const { contributions: _c, ...rest } = g
+  const { contributions: _c, ownerId: _o, ...rest } = g
   return { ...rest, presetAmounts: [...g.presetAmounts] }
 }
 const hasMax2Decimals = (n: number) => Math.abs(Math.round(n * 100) - n * 100) < 1e-6
@@ -317,11 +344,12 @@ export const mockPublicApi: PublicApi = {
 }
 
 /** Todas las aportaciones como las ve el admin (pagadas + QR sin pagar), más nuevas primero. */
-function allAdminContributions(): AdminContribution[] {
+function allAdminContributions(ownerId: number): AdminContribution[] {
   contributions.forEach(advance)
   let id = 1
   const out: AdminContribution[] = []
-  for (const g of goals) {
+  const mine = new Set(goals.filter((g) => g.ownerId === ownerId).map((g) => g.id))
+  for (const g of goals.filter((x) => mine.has(x.id))) {
     for (const c of g.contributions) {
       const created = Date.parse(c.paidAt) - 90_000
       out.push({
@@ -341,7 +369,7 @@ function allAdminContributions(): AdminContribution[] {
     }
   }
   for (const c of contributions.values()) {
-    if (c.status === 'PAID') continue // ya está en g.contributions
+    if (c.status === 'PAID' || !mine.has(c.goalId)) continue // pagadas ya están en g.contributions
     out.push({
       id: id++,
       numRef: c.numRef,
@@ -361,53 +389,76 @@ function allAdminContributions(): AdminContribution[] {
 }
 
 // --- API admin simulada ---------------------------------------------------------------
-const MOCK_TOKEN = 'mock-token-pey'
-function checkToken() {
-  // Leemos el token que guardó AuthContext (localStorage o sessionStorage).
+const tokenFor = (u: MockUser) => `mock-token-${u.id}`
+
+/** Cuenta de la sesión guardada por AuthContext (localStorage o sessionStorage); si no, 401. */
+function currentUser(): MockUser {
   const token = readStoredSession()?.token ?? null
-  if (token !== MOCK_TOKEN) {
+  const user = users.find((u) => tokenFor(u) === token)
+  if (!user) {
     triggerUnauthorized()
     throw new ApiError(401, 'Tu sesión expiró. Inicia sesión de nuevo.')
   }
+  return user
+}
+
+/** Meta del usuario; si es de otra cuenta responde 404 igual que el backend. */
+function ownGoal(id: number): MockGoal {
+  const me = currentUser()
+  const g = findGoal(id)
+  if (g.ownerId !== me.id) throw new ApiError(404, 'Meta no encontrada')
+  return g
 }
 
 export const mockAdminApi: AdminApi = {
   async login({ username, password }) {
     await latency()
-    if (username !== MOCK_USER.username || password !== MOCK_USER.password)
-      throw new ApiError(401, 'Usuario o contraseña incorrectos')
-    return { token: MOCK_TOKEN, tokenType: 'Bearer', expiresIn: 3600 }
+    const u = users.find((x) => x.username === username.trim().toLowerCase() || x.username === username.trim())
+    if (!u || u.password !== password) throw new ApiError(401, 'Usuario o contraseña incorrectos')
+    return { token: tokenFor(u), tokenType: 'Bearer', expiresIn: 3600 }
+  },
+  async register({ name, email, password }) {
+    await latency()
+    const errors: { field: string; message: string }[] = []
+    if (!name?.trim()) errors.push({ field: 'name', message: 'El nombre es obligatorio' })
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email?.trim() ?? '')) errors.push({ field: 'email', message: 'Escribe un correo válido' })
+    if ((password?.length ?? 0) < 8) errors.push({ field: 'password', message: 'La contraseña debe tener entre 8 y 200 caracteres' })
+    if (errors.length) throw new ApiError(400, 'La solicitud tiene datos inválidos', errors)
+    const username = email.trim().toLowerCase()
+    if (users.some((u) => u.username === username)) throw new ApiError(409, 'Ya existe una cuenta con ese correo')
+    const u: MockUser = { id: users.length + 1, username, name: name.trim(), password }
+    users.push(u)
+    return { token: tokenFor(u), tokenType: 'Bearer', expiresIn: 3600 }
   },
   async me() {
     await latency()
-    checkToken()
-    return { username: MOCK_USER.username, roles: ['ROLE_ADMIN'] }
+    const u = currentUser()
+    return { id: u.id, username: u.username, name: u.name, roles: ['ROLE_ADMIN'] }
   },
   async listGoals(status) {
     await latency()
-    checkToken()
+    const me = currentUser()
     contributions.forEach(advance)
-    return goals.filter((g) => !status || g.status === status).map(toAdmin)
+    return goals.filter((g) => g.ownerId === me.id && (!status || g.status === status)).map(toAdmin)
   },
   async getGoal(id) {
     await latency()
-    checkToken()
-    return toAdmin(findGoal(id))
+    return toAdmin(ownGoal(id))
   },
   async createGoal(body) {
     await latency()
-    checkToken()
+    const me = currentUser()
     validateGoal(body)
     const g = makeGoal(nextGoalId++, body.title.trim(), body.description ?? '', body.targetAmount, [], 'OPEN', body.presetAmounts, body.organizer?.trim() || null, body.city?.trim() || null)
+    g.ownerId = me.id
     g.createdAt = g.updatedAt = new Date().toISOString()
     goals.unshift(g)
     return toAdmin(g)
   },
   async updateGoal(id, body) {
     await latency()
-    checkToken()
+    const g = ownGoal(id)
     validateGoal(body)
-    const g = findGoal(id)
     Object.assign(g, {
       title: body.title.trim(),
       description: body.description,
@@ -421,23 +472,31 @@ export const mockAdminApi: AdminApi = {
   },
   async closeGoal(id) {
     await latency()
-    checkToken()
-    const g = findGoal(id)
+    const g = ownGoal(id)
     g.status = 'CLOSED'
+    g.updatedAt = new Date().toISOString()
+    return toAdmin(g)
+  },
+  async reopenGoal(id) {
+    await latency()
+    const g = ownGoal(id)
+    if (g.raisedAmount >= g.targetAmount)
+      throw new ApiError(422, 'No se puede reabrir: la meta ya alcanzó su objetivo')
+    g.status = 'OPEN'
     g.updatedAt = new Date().toISOString()
     return toAdmin(g)
   },
   async listContributions({ goalId, status, limit = 200 } = {}) {
     await latency()
-    checkToken()
-    return allAdminContributions()
+    const me = currentUser()
+    return allAdminContributions(me.id)
       .filter((c) => (!goalId || c.goalId === goalId) && (!status || c.status === status))
       .slice(0, Math.max(1, Math.min(1000, limit)))
   },
   async contributionStats(goalId) {
     await latency()
-    checkToken()
-    const list = allAdminContributions().filter((c) => !goalId || c.goalId === goalId)
+    const me = currentUser()
+    const list = allAdminContributions(me.id).filter((c) => !goalId || c.goalId === goalId)
     const weekAgo = Date.now() - 7 * 86_400_000
     const count = (st: ContributionStatus) => list.filter((c) => c.status === st).length
     return {
@@ -448,15 +507,5 @@ export const mockAdminApi: AdminApi = {
         list.filter((c) => c.status === 'PAID' && Date.parse(c.paidAt!) >= weekAgo).reduce((sum, c) => sum + c.amount, 0),
       ),
     }
-  },
-  async reopenGoal(id) {
-    await latency()
-    checkToken()
-    const g = findGoal(id)
-    if (g.raisedAmount >= g.targetAmount)
-      throw new ApiError(422, 'No se puede reabrir: la meta ya alcanzó su objetivo')
-    g.status = 'OPEN'
-    g.updatedAt = new Date().toISOString()
-    return toAdmin(g)
   },
 }

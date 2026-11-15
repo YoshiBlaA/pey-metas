@@ -38,11 +38,11 @@ export function GoalDetailPage() {
   const desktop = useIsDesktopWidth()
   const { data: goal, error, loading, reload } = useAsync(() => publicApi.getGoal(id, 50), [id])
 
-  if (loading) return <>{!desktop && <AppBar title="Detalle de la meta" backTo="/" />}<Spinner label="Cargando meta…" /></>
+  if (loading) return <>{!desktop && <AppBar title="Detalle de la meta" backTo="/metas" />}<Spinner label="Cargando meta…" /></>
   if (error || !goal)
     return (
       <>
-        {!desktop && <AppBar title="Detalle de la meta" backTo="/" />}
+        {!desktop && <AppBar title="Detalle de la meta" backTo="/metas" />}
         <div className={desktop ? 'pt-8' : 'ui-content'}><ErrorAlert error={error ?? 'Meta no encontrada'} onRetry={() => void reload()} /></div>
       </>
     )
@@ -198,7 +198,7 @@ function DetailMobile({ goal }: { goal: GoalPublicDetail }) {
   )
   return (
     <div className="pb-28">
-      <AppBar title="Detalle de la meta" backTo="/" right={shareBtn} />
+      <AppBar title="Detalle de la meta" backTo="/metas" right={shareBtn} />
       <div className="ui-content" style={{ gap: 16 }}>
         <Banner goal={goal} height={achieved ? 120 : 128} icon={52} radius={14} />
         <div className="flex flex-col gap-1.5">
@@ -229,7 +229,7 @@ function DetailMobile({ goal }: { goal: GoalPublicDetail }) {
       <div className="ui-bottombar">
         <div className="mx-auto flex w-full max-w-[440px] items-center gap-4">
           {achieved ? (
-            <ButtonLink to="/" variant="secondary">Ver otras metas</ButtonLink>
+            <ButtonLink to="/metas" variant="secondary">Ver otras metas</ButtonLink>
           ) : (
             <>
               <div className="flex shrink-0 flex-col">
@@ -253,7 +253,7 @@ function DetailDesktop({ goal }: { goal: GoalPublicDetail }) {
   return (
     <div className="flex flex-col gap-5 pt-6">
       <nav className="t-crumb" aria-label="Ruta">
-        <Link to="/" className="hover:text-ink-700">Metas</Link><span className="mx-1.5">/</span><span>{goal.title}</span>
+        <Link to="/metas" className="hover:text-ink-700">Metas</Link><span className="mx-1.5">/</span><span>{goal.title}</span>
       </nav>
       <div className="flex items-start gap-8">
         <div className="flex min-w-0 flex-1 flex-col gap-5">
@@ -283,7 +283,7 @@ function DetailDesktop({ goal }: { goal: GoalPublicDetail }) {
             <>
               <AchievedNotice goal={goal} />
               <Button variant="secondary" onClick={share}><ShareIcon className="size-[18px]" /> {copied ? 'Enlace copiado' : 'Compartir meta'}</Button>
-              <ButtonLink to="/" variant="ghost">Ver otras metas abiertas</ButtonLink>
+              <ButtonLink to="/metas" variant="ghost">Ver otras metas abiertas</ButtonLink>
             </>
           ) : (
             <>

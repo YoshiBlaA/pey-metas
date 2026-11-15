@@ -69,22 +69,22 @@ function TopNav() {
   useEffect(() => setQ(params.get('q') ?? ''), [params])
   return (
     <header className="border-b border-line bg-card">
-      <div className="mx-auto flex h-[72px] w-full max-w-[1248px] items-center justify-between px-6">
-        <div className="flex items-center gap-12">
+      <div className="mx-auto flex h-[72px] w-full max-w-[1248px] items-center justify-between gap-6 px-6">
+        <div className="flex flex-1 items-center gap-12">
           <Logo />
           <nav aria-label="Principal" className="flex items-center gap-7">
-            {([['/', 'Metas'], ['/como-funciona', '¿Cómo funciona?'], ['/preguntas-frecuentes', 'Preguntas frecuentes']] as const).map(([to, label]) => (
+            {([['/metas', 'Metas'], ['/como-funciona', '¿Cómo funciona?'], ['/preguntas-frecuentes', 'Preguntas frecuentes']] as const).map(([to, label]) => (
               <NavLink key={to} to={to} end className={({ isActive }) => `text-[14px] font-semibold ${isActive ? 'text-brand-700' : 'text-ink-700 hover:text-ink-900'}`}>
                 {label}
               </NavLink>
             ))}
           </nav>
         </div>
-        <form
+        <form className="hidden lg:block"
           role="search"
           onSubmit={(e) => {
             e.preventDefault()
-            navigate(q.trim() ? `/?q=${encodeURIComponent(q.trim())}` : '/')
+            navigate(q.trim() ? `/metas?q=${encodeURIComponent(q.trim())}` : '/metas')
           }}
         >
           <label className="ui-input !h-11 !w-[280px] text-[14px]">
@@ -92,8 +92,22 @@ function TopNav() {
             <input placeholder="Buscar meta…" aria-label="Buscar meta" value={q} onChange={(e) => setQ(e.target.value)} />
           </label>
         </form>
+        <AccountLinks />
       </div>
     </header>
+  )
+}
+
+/** "Iniciar sesión" y "Crea tu meta" en la nav pública (o "Mi panel" si ya hay sesión). */
+function AccountLinks() {
+  const { isAuthenticated } = useAuth()
+  if (isAuthenticated)
+    return <Link to="/admin" className="ui-btn dark sm !w-auto !px-4">Mi panel</Link>
+  return (
+    <div className="flex items-center gap-4">
+      <Link to="/admin/login" className="text-[14px] font-semibold text-ink-700 hover:text-ink-900">Iniciar sesión</Link>
+      <Link to="/admin/registro" className="ui-btn sm !w-auto !px-4">Crea tu meta</Link>
+    </div>
   )
 }
 
@@ -155,7 +169,7 @@ function Sidebar() {
   const { session } = useAuth()
   const location = useLocation()
   const onLogout = useLogout()
-  const name = session?.username ?? ''
+  const name = session?.name || session?.username || ''
   return (
     <aside className="ui-side h-full">
       <div className="px-2"><Logo to="/admin" /></div>
@@ -203,9 +217,9 @@ function TabBar() {
           <button className="absolute inset-0 bg-ink-900/40" onClick={() => setAccount(false)} aria-label="Cerrar" />
           <div className="ui-card absolute inset-x-3 bottom-[94px] !gap-4">
             <div className="flex items-center gap-2.5">
-              <span className="ui-tile size-10 !rounded-full bg-achieved-50 text-[13px] font-bold text-achieved">{initials(session?.username || '?')}</span>
+              <span className="ui-tile size-10 !rounded-full bg-achieved-50 text-[13px] font-bold text-achieved">{initials(session?.name || session?.username || '?')}</span>
               <div className="flex flex-col">
-                <span className="t-strong">{session?.username}</span>
+                <span className="t-strong">{session?.name || session?.username}</span>
                 <span className="t-cap !text-ink-400">Administrador</span>
               </div>
             </div>
