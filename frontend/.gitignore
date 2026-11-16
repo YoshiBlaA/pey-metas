@@ -7,3 +7,6 @@ dist
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+
+# Exportaciones del diseño de Figma (solo referencia local)
+diseño/

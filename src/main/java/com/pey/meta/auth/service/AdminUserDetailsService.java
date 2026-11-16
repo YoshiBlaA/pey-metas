@@ -25,6 +25,8 @@ public class AdminUserDetailsService implements UserDetailsService {
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) {
         return adminUserRepository.findByUsername(username)
+                .or(() -> username == null ? java.util.Optional.empty()
+                        : adminUserRepository.findByUsername(username.trim().toLowerCase(java.util.Locale.ROOT)))
                 .map(admin -> User.withUsername(admin.getUsername())
                         .password(admin.getPassword())
                         .roles(admin.getRole().name())

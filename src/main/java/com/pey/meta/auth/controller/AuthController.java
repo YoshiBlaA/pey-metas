@@ -51,6 +51,22 @@ public class AuthController {
         return authService.login(request);
     }
 
+    @PostMapping("/register")
+    @org.springframework.web.bind.annotation.ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Crear cuenta de admin",
+            description = "Cualquiera puede crear su cuenta; cada admin ve y maneja solo sus metas. "
+                    + "Regresa un JWT igual que el login.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Cuenta creada"),
+            @ApiResponse(responseCode = "400", description = "Datos inv\u00e1lidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Ya existe una cuenta con ese correo",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public LoginResponse register(@Valid @RequestBody com.pey.meta.auth.dto.RegisterRequest request) {
+        return authService.register(request);
+    }
+
     /** Credenciales incorrectas (o usuario inexistente) en el login: 401 con el formato común. */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex, HttpServletRequest req) {

@@ -23,10 +23,17 @@ import com.pey.meta.config.OpenApiConfig;
 @SecurityRequirement(name = OpenApiConfig.BEARER_AUTH)
 public class AdminProfileController {
 
+    private final com.pey.meta.auth.service.CurrentAdmin currentAdmin;
+
+    public AdminProfileController(com.pey.meta.auth.service.CurrentAdmin currentAdmin) {
+        this.currentAdmin = currentAdmin;
+    }
+
     @GetMapping("/me")
     @Operation(summary = "Admin autenticado", description = "Regresa el usuario del token JWT.")
     public AdminProfileResponse me(@AuthenticationPrincipal UserDetails user) {
-        return new AdminProfileResponse(user.getUsername(),
+        com.pey.meta.auth.entity.AdminUser admin = currentAdmin.get(user);
+        return new AdminProfileResponse(admin.getId(), user.getUsername(), admin.getName(),
                 user.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList());
     }
 }

@@ -23,12 +23,21 @@ export interface GoalPublicSummary {
   id: number
   title: string
   description: string | null
+  /** Quien organiza la meta (opcional). */
+  organizer: string | null
+  /** Ciudad (opcional). */
+  city: string | null
   targetAmount: number
   raisedAmount: number
   /** Entero 0-100, ya calculado por el backend. */
   percentage: number
   status: GoalStatus
   presetAmounts: number[]
+  /**
+   * Aún NO viene en el listado (petición en docs/PETICIONES.md). Opcional para que el front
+   * lo use en cuanto el backend lo agregue; en el detalle sí viene siempre.
+   */
+  paidContributionsCount?: number
 }
 
 export interface RecentContribution {
@@ -89,9 +98,21 @@ export interface LoginResponse {
   expiresIn: number
 }
 
+/** POST /api/auth/register (responde igual que el login, con 201) */
+export interface RegisterRequest {
+  /** Nombre de la persona u organización. */
+  name: string
+  /** Correo: es el usuario para iniciar sesión. */
+  email: string
+  password: string
+}
+
 /** GET /api/admin/me */
 export interface AdminMe {
+  id: number
   username: string
+  /** Nombre de la persona u organización (null en cuentas viejas). */
+  name: string | null
   roles: string[]
 }
 
@@ -101,10 +122,39 @@ export interface GoalRequest {
   description: string | null
   targetAmount: number
   presetAmounts: number[]
+  organizer: string | null
+  city: string | null
 }
 
 /** Respuesta de los endpoints admin de metas. */
 export interface GoalAdminResponse extends GoalPublicSummary {
   createdAt: string
   updatedAt: string
+}
+
+/** GET /api/admin/contributions: aportación en cualquier estado (un PENDING vencido llega como EXPIRED). */
+export interface AdminContribution {
+  id: number
+  /** Referencia numérica del cobro en Pey/CoDi. */
+  numRef: string
+  goalId: number
+  goalTitle: string
+  /** Ya viene como "Anónimo" cuando corresponde. */
+  name: string
+  anonymous: boolean
+  message: string | null
+  amount: number
+  status: ContributionStatus
+  createdAt: string
+  expiresAt: string
+  paidAt: string | null
+}
+
+/** GET /api/admin/contributions/stats */
+export interface ContributionStats {
+  paid: number
+  pending: number
+  expired: number
+  /** Suma pagada en los últimos 7 días (MXN). */
+  paidAmountLast7Days: number
 }

@@ -30,7 +30,7 @@ import lombok.Setter;
  * Los montos son MXN con 2 decimales. Los montos predeterminados viven en la tabla goal_preset_amounts.
  */
 @Entity
-@Table(name = "goals")
+@Table(name = "goals", indexes = @jakarta.persistence.Index(name = "idx_goals_owner", columnList = "owner_id"))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -40,11 +40,23 @@ public class Goal {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Admin dueno de la meta (id de admin_users). Cada admin solo ve y maneja sus metas. */
+    @Column(name = "owner_id")
+    private Long ownerId;
+
     @Column(nullable = false, length = 150)
     private String title;
 
     @Column(length = 2000)
     private String description;
+
+    /** Quien organiza la meta (opcional), p. ej. "Familia Ruiz". */
+    @Column(length = 100)
+    private String organizer;
+
+    /** Ciudad de la meta (opcional), p. ej. "Puebla". */
+    @Column(length = 100)
+    private String city;
 
     @Column(name = "target_amount", nullable = false, precision = 12, scale = 2)
     private BigDecimal targetAmount;

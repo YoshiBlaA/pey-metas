@@ -15,9 +15,18 @@
   --color-brand-700: #057a55;  /* oscuro / hover */
   --color-brand-800: #046344;
 
-  /* Índigo: estado "Lograda" */
-  --color-achieved: #5145cd;
-  --color-achieved-50: #e8e7fc;
+  /* Acento: Static Amethyst (Colorbears). El verde se queda para acciones; el morado decora
+     y marca las metas logradas. */
+  --color-accent-900: #1715a3;
+  --color-accent-700: #3d36b4;
+  --color-accent-500: #7266cc;
+  --color-accent-200: #b6a3eb;
+  --color-accent-100: #d7c0f9;
+  --color-accent-50: #f3effe;
+
+  /* Estado "Lograda" (usa el acento) */
+  --color-achieved: #3d36b4;
+  --color-achieved-50: #eee9fd;
 
   /* Texto */
   --color-ink-900: #0f1b2d;    /* principal */
@@ -42,18 +51,202 @@
 }
 
 html {
-  background: var(--color-surface);
+  /* Fondo con dos tintes muy suaves (morado arriba a la derecha, verde arriba a la izquierda). */
+  background:
+    radial-gradient(1100px 520px at 105% -8%, rgba(114, 102, 204, 0.11), transparent 62%),
+    radial-gradient(900px 460px at -8% -4%, rgba(14, 159, 110, 0.08), transparent 60%),
+    var(--color-surface);
+  background-attachment: fixed;
+  min-height: 100%;
+  font-size: 16px;
   color: var(--color-ink-900);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Foco visible y consistente para navegación con teclado (accesibilidad). */
-:focus-visible {
-  outline: 3px solid var(--color-brand-400);
-  outline-offset: 2px;
+/* Foco visible y consistente para navegación con teclado (accesibilidad).
+   Va en @layer base para que los componentes (p. ej. .ui-input, cuyo foco es
+   solo el borde de 2px) puedan quitarlo: lo que está fuera de capa siempre gana. */
+@layer base {
+  :focus-visible {
+    outline: 3px solid var(--color-brand-400);
+    outline-offset: 2px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+
+/* ------------------------------------------------------------------------------------
+   Sistema de diseño copiado 1:1 de figma_pey/fuente_html/style.css (fuente exacta de medidas).
+   Prefijos: t-* = tipografía, ui-* = componentes. Se combinan con utilidades de Tailwind.
+   ------------------------------------------------------------------------------------ */
+@layer components {
+  /* Tipografía */
+  .t-h1 { font-size: 26px; line-height: 34px; font-weight: 700; }
+  .t-h2 { font-size: 20px; line-height: 28px; font-weight: 700; }
+  .t-h3 { font-size: 17px; line-height: 24px; font-weight: 600; }
+  .t-xl { font-size: 34px; line-height: 42px; font-weight: 800; letter-spacing: -0.01em; }
+  .t-body { font-size: 14px; line-height: 21px; font-weight: 400; color: var(--color-ink-700); }
+  .t-bodyL { font-size: 16px; line-height: 24px; color: var(--color-ink-700); }
+  .t-strong { font-size: 14px; line-height: 21px; font-weight: 600; }
+  .t-cap { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--color-ink-700); }
+  .t-small { font-size: 12px; line-height: 16px; font-weight: 600; }
+  .t-crumb { font-size: 13px; color: var(--color-ink-400); font-weight: 500; }
+
+  /* Pantalla móvil: app bar 56px y contenido con padding 8/20/24 y separación 18 */
+  .ui-appbar { height: 56px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; }
+  .ui-content { padding: 8px 20px 24px; display: flex; flex-direction: column; gap: 18px; }
+  .ui-iconbtn {
+    width: 40px; height: 40px; border-radius: 999px; background: var(--color-card);
+    border: 1px solid var(--color-line); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  .ui-card {
+    background: var(--color-card); border: 1px solid var(--color-line); border-radius: 16px; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    box-shadow: 0 4px 16px rgba(15, 27, 45, 0.06), 0 1px 2px rgba(15, 27, 45, 0.04);
+  }
+  .ui-card-flat { box-shadow: none; }
+
+  /* Chips de estado */
+  .ui-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+    font-size: 12px; line-height: 16px; font-weight: 600; width: max-content; white-space: nowrap;
+  }
+  .ui-chip > i { width: 6px; height: 6px; border-radius: 999px; display: block; }
+  .ui-chip.open, .ui-chip.paid { background: var(--color-brand-100); color: var(--color-brand-700); }
+  .ui-chip.open > i, .ui-chip.paid > i { background: var(--color-brand-600); }
+  .ui-chip.done { background: var(--color-achieved-50); color: var(--color-achieved); }
+  .ui-chip.done > i { background: var(--color-achieved); }
+  .ui-chip.pending { background: var(--color-pending-bg); color: var(--color-pending-text); }
+  .ui-chip.pending > i { background: var(--color-pending); }
+  .ui-chip.expired { background: var(--color-expired-bg); color: var(--color-expired); }
+  .ui-chip.expired > i { background: var(--color-expired); }
+  .ui-chip.closed { background: var(--color-closed); color: var(--color-ink-700); }
+  .ui-chip.closed > i { background: var(--color-ink-400); }
+  /* Filtro activo: como las pastillas .pill.on del sitio público (sin borde). */
+  .ui-chip.on { background: var(--color-accent-900); color: #fff; }
+  .ui-chip.on > i { background: #fff; }
+
+  /* Barra de progreso: 8px (grande 14px) */
+  .ui-bar { height: 8px; border-radius: 999px; background: var(--color-track); overflow: hidden; width: 100%; }
+  .ui-bar.lg { height: 14px; }
+  .ui-bar > div {
+    height: 100%; border-radius: 999px; transition: width 0.7s ease-out;
+    background: linear-gradient(90deg, var(--color-brand-600), var(--color-brand-400));
+  }
+  .ui-bar.done > div { background: linear-gradient(90deg, var(--color-accent-700), var(--color-accent-500)); }
+
+  /* Botones: 52px radio 14 15px/700 (chico 44px radio 12 14px) */
+  .ui-btn {
+    height: 52px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font-weight: 700; font-size: 15px; width: 100%; padding: 0 20px; white-space: nowrap; transition: background 0.15s;
+  }
+  .ui-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .ui-btn.primary { background: var(--color-brand-600); color: #fff; }
+  .ui-btn.primary:hover:not(:disabled) { background: var(--color-brand-700); }
+  .ui-btn.secondary { background: var(--color-card); color: var(--color-ink-900); border: 1.5px solid var(--color-line); }
+  .ui-btn.secondary:hover:not(:disabled) { background: var(--color-brand-50); }
+  .ui-btn.ghost { color: var(--color-brand-700); }
+  .ui-btn.ghost:hover:not(:disabled) { background: var(--color-brand-50); }
+  .ui-btn.dark { background: var(--color-ink-900); color: #fff; }
+  .ui-btn.danger { background: var(--color-card); color: var(--color-expired); border: 1.5px solid var(--color-expired-bg); }
+  .ui-btn.danger:hover:not(:disabled) { background: var(--color-expired-bg); }
+  .ui-btn.sm { height: 44px; font-size: 14px; border-radius: 12px; width: auto; }
+
+  /* Campos: 52px radio 12 borde 1.5px; foco 2px verde; textarea 96px */
+  .ui-field { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+  .ui-field > label, .ui-label { font-size: 14px; line-height: 21px; font-weight: 600; color: var(--color-ink-900); }
+  .ui-input {
+    height: 52px; border: 1.5px solid var(--color-line); border-radius: 12px; background: var(--color-card);
+    padding: 0 16px; display: flex; align-items: center; gap: 10px; font-size: 16px; color: var(--color-ink-900); width: 100%;
+  }
+  .ui-input:focus-within { border: 2px solid var(--color-brand-600); padding: 0 15.5px; }
+  .ui-input.invalid { border-color: var(--color-expired); }
+  .ui-input > input, .ui-input > textarea { flex: 1; min-width: 0; height: 100%; background: transparent; outline: none; }
+  .ui-input input::placeholder, .ui-input textarea::placeholder { color: var(--color-ink-400); }
+  .ui-input.area { height: 96px; align-items: flex-start; padding-top: 14px; padding-bottom: 10px; }
+  .ui-input.area > textarea { resize: none; }
+  /* El contorno del input ya marca el foco; quitamos el outline doble. */
+  .ui-input > input:focus-visible, .ui-input > textarea:focus-visible { outline: none; }
+
+  /* Botones de monto: 56px radio 14 gap 10 */
+  .ui-amounts { display: flex; gap: 10px; flex-wrap: wrap; }
+  .ui-amt {
+    flex: 1; min-width: 64px; height: 56px; border-radius: 14px; border: 1.5px solid var(--color-line);
+    background: var(--color-card); display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600;
+  }
+  .ui-amt[aria-pressed='true'] { border: 2px solid var(--color-brand-600); background: var(--color-brand-50); color: var(--color-brand-700); }
+
+  .ui-check {
+    appearance: none; width: 22px; height: 22px; border-radius: 6px; border: 1.5px solid var(--color-line);
+    background: var(--color-card); flex-shrink: 0; display: grid; place-items: center; cursor: pointer;
+  }
+  .ui-check:checked {
+    background: var(--color-brand-600) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E") center / 14px no-repeat;
+    border-color: var(--color-brand-600);
+  }
+
+  .ui-bottombar {
+    position: fixed; left: 0; right: 0; bottom: 0; background: var(--color-card); border-top: 1px solid var(--color-line);
+    padding: 14px 20px 30px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 -4px 16px rgba(15, 27, 45, 0.06);
+  }
+  .ui-tile { border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .ui-num {
+    width: 24px; height: 24px; border-radius: 999px; background: var(--color-brand-100); color: var(--color-brand-700);
+    font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  /* Admin */
+  .ui-side {
+    width: 248px; background: var(--color-card); border-right: 1px solid var(--color-line); padding: 24px 16px;
+    display: flex; flex-direction: column; gap: 28px;
+  }
+  .ui-nav { display: flex; flex-direction: column; gap: 4px; }
+  .ui-nav a {
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; font-size: 14px;
+    font-weight: 600; color: var(--color-ink-700);
+  }
+  .ui-nav a:hover { background: var(--color-surface); }
+  .ui-nav a.active { background: var(--color-brand-50); color: var(--color-brand-700); }
+  .ui-main { flex: 1; min-width: 0; padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+  .ui-kpi {
+    flex: 1; background: var(--color-card); border: 1px solid var(--color-line); border-radius: 16px; padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .ui-table { border-collapse: collapse; width: 100%; }
+  .ui-table th {
+    font-size: 12px; font-weight: 600; color: var(--color-ink-400); text-align: left; padding: 12px 16px;
+    text-transform: uppercase; letter-spacing: 0.04em; background: #fafbfb; border-bottom: 1px solid var(--color-line);
+  }
+  .ui-table td { font-size: 14px; padding: 14px 16px; border-bottom: 1px solid var(--color-line); vertical-align: middle; }
+  .ui-table tr:last-child td { border-bottom: none; }
+  .ui-tag {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 12px; border-radius: 999px;
+    background: var(--color-brand-50); border: 1.5px solid var(--color-brand-100); color: var(--color-brand-700);
+    font-weight: 700; font-size: 14px;
+  }
+  .ui-tag > button {
+    width: 20px; height: 20px; border-radius: 999px; background: var(--color-brand-100); display: flex;
+    align-items: center; justify-content: center;
+  }
+}
+
+/* ---- Acentos: manchas suaves que flotan y bandas apiladas de una sola paleta (Colorbears) ---- */
+@keyframes blob-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(18px, -14px) scale(1.05); }
+}
+.lp-blob {
+  position: absolute; border-radius: 999px; filter: blur(56px); opacity: 0.45; pointer-events: none;
+  animation: blob-float 16s ease-in-out infinite;
+}
+.lp-stack { border-radius: 20px; transition: transform 0.2s ease; }
+.lp-stack:hover { transform: translateY(-2px); }
+/* Texto con degradado verde → morado (para resaltar una frase). */
+.lp-grad-text {
+  background-image: linear-gradient(90deg, var(--color-brand-600), var(--color-accent-700));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
 }

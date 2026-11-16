@@ -147,6 +147,62 @@ public class GoalService {
         return goal;
     }
 
+    // ---------------------------------------------------------------- admin por dueno
+
+    /** Crea la meta a nombre del admin {@code ownerId}. */
+    @Transactional
+    public Goal create(GoalRequest request, Long ownerId) {
+        Goal goal = new Goal();
+        goal.setOwnerId(ownerId);
+        goal.setRaisedAmount(BigDecimal.ZERO);
+        goal.setStatus(GoalStatus.OPEN);
+        apply(goal, request);
+        return goalRepository.save(goal);
+    }
+
+    /** Metas del admin (mas nuevas primero); si status no es nulo, solo las de ese estado. */
+    @Transactional(readOnly = true)
+    public List<Goal> listForOwner(Long ownerId, GoalStatus status) {
+        return status == null
+                ? goalRepository.findByOwnerIdOrderByCreatedAtDesc(ownerId)
+                : goalRepository.findByOwnerIdAndStatusOrderByCreatedAtDesc(ownerId, status);
+    }
+
+    /**
+     * La meta si existe y es del admin. Si es de otro admin responde 404 igual que si no existiera,
+     * para no revelar metas ajenas.
+     */
+    @Transactional(readOnly = true)
+    public Goal getOwnedOrThrow(Long goalId, Long ownerId) {
+        Goal goal = getGoalOrThrow(goalId);
+        requireOwner(goal, ownerId);
+        return goal;
+    }
+
+    @Transactional
+    public Goal update(Long goalId, Long ownerId, GoalRequest request) {
+        requireOwner(getGoalOrThrow(goalId), ownerId);
+        return update(goalId, request);
+    }
+
+    @Transactional
+    public Goal close(Long goalId, Long ownerId) {
+        requireOwner(getGoalOrThrow(goalId), ownerId);
+        return close(goalId);
+    }
+
+    @Transactional
+    public Goal reopen(Long goalId, Long ownerId) {
+        requireOwner(getGoalOrThrow(goalId), ownerId);
+        return reopen(goalId);
+    }
+
+    private static void requireOwner(Goal goal, Long ownerId) {
+        if (ownerId == null || !ownerId.equals(goal.getOwnerId())) {
+            throw new NotFoundException("Meta", goal.getId());
+        }
+    }
+
     // ---------------------------------------------------------------- publico
 
     @Transactional(readOnly = true)
@@ -172,8 +228,14 @@ public class GoalService {
         goal.setTitle(request.title().trim());
         String description = request.description();
         goal.setDescription(description == null || description.isBlank() ? null : description.trim());
+        goal.setOrganizer(blankToNull(request.organizer()));
+        goal.setCity(blankToNull(request.city()));
         goal.setTargetAmount(request.targetAmount().setScale(2, RoundingMode.HALF_UP));
         goal.replacePresetAmounts(normalizePresets(request.presetAmounts()));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     /** Escala a 2 decimales, quita repetidos y ordena de menor a mayor. */

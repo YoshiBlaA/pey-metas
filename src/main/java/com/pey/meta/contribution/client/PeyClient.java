@@ -17,7 +17,7 @@ import org.springframework.web.client.RestClientResponseException;
 import com.pey.meta.contribution.exception.PeyApiException;
 
 /**
- * Cliente HTTP de la API de Pey (https://docs.pey.mx). Solo "Crear QR" de CoDi.
+ * Cliente HTTP de la API de Pey (https://docs.pey.mx): crear QR de CoDi y consultar sus transacciones.
  * Autenticacion: header Authorization: Bearer {pey.api-key}.
  */
 @Component
@@ -26,6 +26,7 @@ public class PeyClient {
     private static final Logger log = LoggerFactory.getLogger(PeyClient.class);
 
     static final String CREATE_QR_PATH = "/codi/qr";
+    static final String QR_TRANSACTIONS_PATH = "/transaction/codi/qr/{id}";
 
     private final RestClient restClient;
     private final String apiKey;
@@ -81,6 +82,31 @@ public class PeyClient {
             throw new PeyApiException("Pey respondi\u00f3 sin id o qrString del QR");
         }
         return body;
+    }
+
+    /**
+     * Transacciones de un QR de CoDi (primera pagina, hasta 20). Sirve para conciliar pagos cuando el webhook
+     * no llega. Nunca regresa null: si Pey no responde items, la lista va vacia.
+     * @throws PeyApiException si falta la API key, Pey responde error o no hay conexion
+     */
+    public java.util.List<PeyQrTransactionsResponse.Item> getQrTransactions(String codiQrId) {
+        if (apiKey.isEmpty()) {
+            throw new PeyApiException("PEY_API_KEY no está configurada");
+        }
+        try {
+            PeyQrTransactionsResponse body = restClient.get()
+                    .uri(QR_TRANSACTIONS_PATH, codiQrId)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(PeyQrTransactionsResponse.class);
+            return body == null || body.items() == null ? java.util.List.of() : body.items();
+        } catch (RestClientResponseException ex) {
+            throw new PeyApiException("Pey respondió HTTP " + ex.getStatusCode().value() + " al consultar el QR " + codiQrId,
+                    ex.getStatusCode().value(), null, null, ex);
+        } catch (RestClientException ex) {
+            throw new PeyApiException("No se pudo comunicar con Pey: " + ex.getMessage(), null, null, null, ex);
+        }
     }
 
     private static PeyErrorResponse.PeyError parseError(RestClientResponseException ex) {

@@ -14,6 +14,8 @@ pey:
   api-key: test-api-key
   api-url: http://localhost:9999
   qr-expiration-seconds: 1200
+  reconcile:
+    enabled: false
 
 app:
   jwt:

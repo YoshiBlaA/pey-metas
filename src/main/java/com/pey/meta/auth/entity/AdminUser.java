@@ -28,6 +28,10 @@ public class AdminUser {
     @Column(nullable = false, length = 100)
     private String username;
 
+    /** Nombre de la persona u organizacion (opcional para cuentas viejas). */
+    @Column(length = 100)
+    private String name;
+
     /** Hash BCrypt, nunca la contraseña en claro. */
     @Column(nullable = false, length = 100)
     private String password;
@@ -66,6 +70,14 @@ public class AdminUser {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getPassword() {

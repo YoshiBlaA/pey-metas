@@ -29,4 +29,13 @@ public interface GoalRepository extends JpaRepository<Goal, Long> {
     List<Goal> findAllByOrderByCreatedAtDesc();
 
     List<Goal> findByStatusOrderByCreatedAtDesc(GoalStatus status);
+
+    List<Goal> findByOwnerIdOrderByCreatedAtDesc(Long ownerId);
+
+    List<Goal> findByOwnerIdAndStatusOrderByCreatedAtDesc(Long ownerId, GoalStatus status);
+
+    /** Asigna al admin indicado las metas que todavia no tienen dueno (metas creadas antes de las cuentas). */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("update Goal g set g.ownerId = :ownerId where g.ownerId is null")
+    int assignOwnerToOrphans(@Param("ownerId") Long ownerId);
 }

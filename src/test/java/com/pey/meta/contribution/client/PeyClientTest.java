@@ -103,4 +103,21 @@ class PeyClientTest {
                 .hasMessageContaining("PEY_API_KEY");
         noCalls.verify();
     }
+
+    @Test
+    void getQrTransactionsLeeLosPagos() {
+        server.expect(org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo("https://api.test/transaction/codi/qr/351420196d"))
+                .andExpect(org.springframework.test.web.client.match.MockRestRequestMatchers.header("Authorization", "Bearer test-key"))
+                .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess(
+                        "{\"items\":[{\"id\":\"TX1\",\"status\":\"PAID\",\"amount\":0.01,\"datePaid\":1794780519,\"currency\":\"MXN\"}],\"nextToken\":null}",
+                        org.springframework.http.MediaType.APPLICATION_JSON));
+
+        java.util.List<PeyQrTransactionsResponse.Item> items = client.getQrTransactions("351420196d");
+
+        org.assertj.core.api.Assertions.assertThat(items).hasSize(1);
+        org.assertj.core.api.Assertions.assertThat(items.get(0).isPaid()).isTrue();
+        org.assertj.core.api.Assertions.assertThat(items.get(0).id()).isEqualTo("TX1");
+        org.assertj.core.api.Assertions.assertThat(items.get(0).datePaid()).isEqualTo(1794780519L);
+        server.verify();
+    }
 }

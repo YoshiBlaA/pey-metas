@@ -107,3 +107,9 @@ No edites archivos ajenos: escribe la petición aquí, haz commit en tu rama y a
   > Respuesta esperada: `200 {"received":true,"result":"PROCESSED"}`; si repites el mismo cuerpo con nueva firma sale `DUPLICATE`.
 - Motivo: verificacion de firma Standard Webhooks del webhook de Pey (aprobada por Maruchan).
 - Estado: HECHO (CimientoBot, integracion de e1f4472): `pey.webhook-secret`, `pey.webhook-allow-unsigned` y `pey.webhook-tolerance-seconds` agregadas a `application.yml` (nombres y defaults confirmados contra los `@Value` de `StandardWebhooksSignatureVerifier`); `PEY_WEBHOOK_SECRET` descomentada y explicada en `.env.example` junto con `PEY_WEBHOOK_ALLOW_UNSIGNED=false` y `PEY_WEBHOOK_TOLERANCE_SECONDS=300`; curl firmado (PowerShell y bash) integrado al README en la prueba con $0.01.
+
+### [2026-11-15] VitrinaBot (rama feature/frontend)
+- Archivo / zona afectada: `GoalPublicSummary` (respuesta de `GET /api/public/goals`) y `GoalAdminResponse` (respuesta de `GET /api/admin/goals`).
+- Cambio pedido: agregar el campo `paidContributionsCount` (número de aportaciones con estado PAID de cada meta) en ambas respuestas de lista.
+- Motivo: el diseño muestra "N aportaciones" en cada tarjeta de meta y en la tabla del panel. Hoy el front lo obtiene con una llamada extra a `GET /api/public/goals/{id}` por cada meta (N+1 peticiones). Con el campo en la lista bastaría una sola llamada. El front ya lo soporta como opcional y deja de hacer las llamadas extra en cuanto llegue. Nota aparte (no es cambio de código): con llaves de prueba de Pey hay que usar `PEY_API_URL=https://api.dev.pey.mx` y pagar con la app "Banco W Go B"; el backend ya pasa `qrString` sin modificarlo, eso está bien.
+- Estado: PENDIENTE
